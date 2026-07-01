@@ -39,18 +39,33 @@ def create_unique_party_code(db: Session) -> str:
         exists = db.query(Party.id).filter(Party.join_code == code).first()
         if not exists:
             return code
-    raise bad_request("Failed to generate party code")
+    raise bad_request("生成聚会码失败")
+
+
+def is_active_party_host(db: Session, family_id: int, user_id: int) -> bool:
+    return (
+        db.query(Party.id)
+        .filter(
+            Party.family_id == family_id,
+            Party.host_user_id == user_id,
+            Party.status == PartyStatus.ACTIVE,
+        )
+        .first()
+        is not None
+    )
 
 
 def has_family_access(db: Session, family_id: int, user_id: int) -> bool:
     if get_member(db, family_id, user_id):
         return True
-    return is_party_guest(db, family_id, user_id) is not None
+    if is_party_guest(db, family_id, user_id) is not None:
+        return True
+    return is_active_party_host(db, family_id, user_id)
 
 
 def require_family_access(db: Session, family_id: int, user_id: int) -> None:
     if not has_family_access(db, family_id, user_id):
-        raise forbidden("You do not have access to this family")
+        raise forbidden("您没有权限访问该家庭")
 
 
 def _get_party(db: Session, party_id: int) -> Party:
@@ -61,7 +76,7 @@ def _get_party(db: Session, party_id: int) -> Party:
         .first()
     )
     if not party:
-        raise not_found("Party")
+        raise not_found("聚会")
     return party
 
 
@@ -136,7 +151,7 @@ def start_party(db: Session, family_id: int, host_id: int, name: str) -> dict:
         .first()
     )
     if existing:
-        raise bad_request("This family already has an active party")
+        raise bad_request("该家庭已有进行中的聚会")
 
     party = Party(
         family_id=family_id,
@@ -179,7 +194,7 @@ def join_party(db: Session, user: User, join_code: str) -> dict:
         .first()
     )
     if not party:
-        raise not_found("Party code")
+        raise bad_request("聚会码无效或聚会已结束")
 
     ensure_party_guest(db, party, user.id)
     party = _get_party(db, party.id)
@@ -190,10 +205,10 @@ def close_party(db: Session, party_id: int, operator_id: int) -> dict:
     party = _get_party(db, party_id)
     member = get_member(db, party.family_id, operator_id)
     if (not member or member.role != FamilyRole.ADMIN) and party.host_user_id != operator_id:
-        raise forbidden("Only host or admin can close the party")
+        raise forbidden("只有聚会发起者或家庭管理员可以结束聚会")
 
     if party.status == PartyStatus.CLOSED:
-        raise bad_request("Party is already closed")
+        raise bad_request("聚会已结束")
 
     try:
         order_service.lock_session(db, party.family_id, operator_id)
@@ -228,22 +243,5 @@ def get_my_active_party(db: Session, user_id: int) -> dict | None:
     )
     if hosted:
         return _serialize_party(db, hosted, user_id)
-
-    # 家庭成员：进入聚会模式时记录参与（便于统计人数）
-    member_party = (
-        db.query(Party)
-        .join(FamilyMember, FamilyMember.family_id == Party.family_id)
-        .options(joinedload(Party.guests).joinedload(PartyGuest.user))
-        .filter(
-            FamilyMember.user_id == user_id,
-            Party.status == PartyStatus.ACTIVE,
-        )
-        .order_by(Party.created_at.desc())
-        .first()
-    )
-    if member_party:
-        if ensure_party_guest(db, member_party, user_id):
-            member_party = _get_party(db, member_party.id)
-        return _serialize_party(db, member_party, user_id)
 
     return None

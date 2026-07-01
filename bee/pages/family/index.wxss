@@ -148,6 +148,55 @@
   margin: 32rpx 32rpx 0;
 }
 
+.current-family-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 20rpx;
+  padding: 24rpx 28rpx;
+  background: #fff;
+  border-radius: 20rpx;
+  box-shadow: 0 4rpx 16rpx rgba(0, 0, 0, 0.04);
+  border: 2rpx solid rgba(230, 67, 64, 0.12);
+}
+
+.current-family-bar.tappable:active {
+  opacity: 0.85;
+}
+
+.current-family-left {
+  display: flex;
+  align-items: center;
+  gap: 12rpx;
+  min-width: 0;
+  flex: 1;
+}
+
+.current-family-label {
+  font-size: 24rpx;
+  color: #999;
+  flex-shrink: 0;
+}
+
+.current-family-name {
+  font-size: 30rpx;
+  font-weight: 600;
+  color: #333;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.current-family-switch {
+  display: flex;
+  align-items: center;
+  gap: 4rpx;
+  font-size: 24rpx;
+  color: #C4A57B;
+  flex-shrink: 0;
+  margin-left: 16rpx;
+}
+
 .section-title {
   display: flex;
   align-items: center;
@@ -205,6 +254,17 @@
   margin: 0 20rpx;
 }
 
+.family-card.is-current {
+  border: 2rpx solid rgba(230, 67, 64, 0.2);
+}
+
+.family-name-row {
+  display: flex;
+  align-items: center;
+  gap: 12rpx;
+  min-width: 0;
+}
+
 .family-name {
   font-size: 32rpx;
   font-weight: 600;
@@ -212,6 +272,18 @@
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+  flex: 1;
+  min-width: 0;
+}
+
+.current-tag {
+  flex-shrink: 0;
+  padding: 2rpx 14rpx;
+  border-radius: 16rpx;
+  font-size: 20rpx;
+  font-weight: 500;
+  color: #e64340;
+  background: rgba(230, 67, 64, 0.1);
 }
 
 .family-meta {
@@ -233,12 +305,9 @@
   color: #e64340;
 }
 
+.role-member,
+.role-diner,
 .role-chef {
-  background: rgba(255, 152, 0, 0.12);
-  color: #f57c00;
-}
-
-.role-diner {
   background: rgba(76, 175, 80, 0.12);
   color: #4caf50;
 }

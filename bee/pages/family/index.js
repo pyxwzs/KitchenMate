@@ -1,10 +1,15 @@
 const FAMILY = require('../../utils/family')
+const FAMILY_SWITCH = require('../../utils/familySwitch')
 const MENU = require('../../utils/menu')
+const DIALOG = require('../../utils/dialog')
 
 Page({
   data: {
     loading: true,
     families: [],
+    currentFamilyId: null,
+    currentFamilyName: '',
+    canSwitchFamily: false,
     roleLabels: FAMILY.ROLE_LABELS,
     createDialogShow: false,
     createName: '',
@@ -18,14 +23,37 @@ Page({
     this.setData({ loading: true })
     try {
       const families = await FAMILY.listFamilies()
-      this.setData({ families, loading: false })
+      const currentFamilyId = MENU.getCurrentFamilyId()
+      const current = families.find((f) => Number(f.id) === Number(currentFamilyId)) || families[0]
+      const currentFamilyName = current ? current.name : ''
+      if (current) {
+        MENU.setCurrentFamilyId(current.id)
+      }
+      this.setData({
+        families,
+        currentFamilyId: current ? current.id : null,
+        currentFamilyName,
+        canSwitchFamily: families.length > 1,
+        loading: false,
+      })
     } catch (err) {
       this.setData({ loading: false })
-      wx.showToast({
-        title: err.message || '加载失败',
-        icon: 'none',
-      })
+      await DIALOG.showError(err, '加载失败')
     }
+  },
+
+  showFamilyPicker() {
+    const { families, currentFamilyId, canSwitchFamily } = this.data
+    if (!canSwitchFamily) return
+    FAMILY_SWITCH.pickFamily(families, currentFamilyId).then((picked) => {
+      if (!picked || Number(picked.id) === Number(currentFamilyId)) return
+      FAMILY_SWITCH.applyFamilySwitch(picked)
+      this.setData({
+        currentFamilyId: picked.id,
+        currentFamilyName: picked.name,
+      })
+      wx.showToast({ title: `已切换到「${picked.name}」`, icon: 'none' })
+    })
   },
 
   showCreateDialog() {
@@ -43,7 +71,7 @@ Page({
   async confirmCreate() {
     const name = this.data.createName.trim()
     if (!name) {
-      wx.showToast({ title: '请输入家庭名称', icon: 'none' })
+      await DIALOG.showAlert('请输入家庭名称')
       return
     }
     try {
@@ -54,10 +82,7 @@ Page({
         url: `/pages/family/detail?id=${family.id}`,
       })
     } catch (err) {
-      wx.showToast({
-        title: err.message || '创建失败',
-        icon: 'none',
-      })
+      await DIALOG.showError(err, '创建失败')
     }
   },
 
@@ -67,7 +92,14 @@ Page({
 
   goDetail(e) {
     const id = e.currentTarget.dataset.id
-    MENU.setCurrentFamilyId(id)
+    FAMILY_SWITCH.applyFamilySwitch({ id, name: '' })
+    const family = this.data.families.find((f) => Number(f.id) === Number(id))
+    if (family) {
+      this.setData({
+        currentFamilyId: family.id,
+        currentFamilyName: family.name,
+      })
+    }
     wx.navigateTo({ url: `/pages/family/detail?id=${id}` })
   },
 })

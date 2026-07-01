@@ -11,13 +11,6 @@
       <text class="join-overlay-title">{{joinTitle}}</text>
       <text class="join-overlay-sub">{{joinSubtitle}}</text>
     </view>
-
-    <view wx:elif="{{joinState === 'error'}}" class="join-overlay-inner">
-      <view class="join-overlay-emoji">😕</view>
-      <text class="join-overlay-title">未能加入</text>
-      <view class="join-overlay-error">{{joinError}}</view>
-      <view class="join-overlay-btn" bindtap="dismissError">返回重试</view>
-    </view>
   </view>
 
   <block wx:if="{{joinState === 'idle'}}">

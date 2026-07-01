@@ -240,6 +240,24 @@
   font-weight: 600;
 }
 
+.party-join-banner {
+  display: flex;
+  align-items: center;
+  gap: 12rpx;
+  margin: 0 32rpx 24rpx;
+  padding: 24rpx 28rpx;
+  background: linear-gradient(135deg, #fff5ed, #ffe8e0);
+  border: 2rpx solid rgba(230, 67, 64, 0.2);
+  border-radius: 16rpx;
+  font-size: 26rpx;
+  color: #e64340;
+  font-weight: 500;
+}
+
+.party-join-banner:active {
+  opacity: 0.85;
+}
+
 .quick-row {
   display: flex;
   gap: 16rpx;
@@ -315,12 +333,14 @@
   color: #e64340;
 }
 
-.role-chef {
-  background: rgba(255, 152, 0, 0.12);
-  color: #f57c00;
+.role-owner {
+  background: rgba(156, 39, 176, 0.12);
+  color: #9c27b0;
 }
 
-.role-diner {
+.role-member,
+.role-diner,
+.role-chef {
   background: rgba(76, 175, 80, 0.12);
   color: #4caf50;
 }

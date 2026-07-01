@@ -20,6 +20,24 @@
   </view>
 
   <view class="quick-actions">
+    <view
+      wx:if="{{currentFamilyId}}"
+      class="current-family-card {{canSwitchFamily ? 'tappable' : ''}}"
+      bindtap="showFamilyPicker"
+    >
+      <view class="current-family-left">
+        <van-icon name="home-o" size="44rpx" color="#e64340" />
+        <view>
+          <view class="current-family-title">当前家庭</view>
+          <view class="current-family-name">{{currentFamilyName}}</view>
+        </view>
+      </view>
+      <view wx:if="{{canSwitchFamily}}" class="current-family-switch">
+        <text>切换</text>
+        <van-icon name="arrow-down" size="24rpx" color="#C4A57B" />
+      </view>
+    </view>
+
     <view wx:if="{{activeParty}}" class="party-active-card" bindtap="goParty">
       <view class="party-active-left">
         <text class="party-active-emoji">🎉</text>

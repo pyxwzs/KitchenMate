@@ -40,5 +40,9 @@ class MyMenuResponse(BaseModel):
 
 class FamilyMenuResponse(BaseModel):
     family_id: int
-    cook: CookInfo
+    cook: CookInfo | None = None
+    cooks: list[CookInfo] = []
+    menu_members: list[CookInfo] = []
     dishes: list[DishResponse] = []
+    is_party_menu: bool = False
+    party_id: int | None = None

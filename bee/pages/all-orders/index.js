@@ -1,8 +1,10 @@
 const FAMILY = require('../../utils/family')
+const FAMILY_SWITCH = require('../../utils/familySwitch')
 const MENU = require('../../utils/menu')
 const ORDER = require('../../utils/order')
 const ORDER_WS = require('../../utils/orderWs')
 const PARTY = require('../../utils/party')
+const DIALOG = require('../../utils/dialog')
 
 Page({
   data: {
@@ -11,7 +13,7 @@ Page({
     currentFamilyId: null,
     currentFamilyName: '',
     cookName: '',
-    isCook: false,
+    menuSubtitle: '',
     submitting: false,
     wsConnected: false,
     activeTab: 'active',
@@ -98,18 +100,17 @@ Page({
       }
     } catch (err) {
       this.setData({ loading: false })
-      wx.showToast({ title: err.message || '加载失败', icon: 'none' })
+      await DIALOG.showError(err, '加载失败')
     }
   },
 
   async loadCookInfo() {
     const { currentFamilyId } = this.data
-    const myUserId = wx.getStorageSync('uid')
     try {
       const menuRaw = await MENU.getFamilyMenu(currentFamilyId)
+      const menuMembers = menuRaw.menu_members || menuRaw.cooks || []
       this.setData({
-        cookName: (menuRaw.cook && menuRaw.cook.display_name) || '',
-        isCook: menuRaw.cook && menuRaw.cook.id === myUserId,
+        menuSubtitle: MENU.buildMenuSubtitle(menuMembers, menuRaw.is_party_menu),
       })
     } catch (e) {
       // ignore
@@ -128,7 +129,7 @@ Page({
     } catch (err) {
       if (!silent) {
         this.setData({ loading: false })
-        wx.showToast({ title: err.message || '加载失败', icon: 'none' })
+        await DIALOG.showError(err, '加载失败')
       }
     }
   },
@@ -149,7 +150,7 @@ Page({
     } catch (err) {
       this.setData({ historyLoading: false, loading: false })
       if (!silent) {
-        wx.showToast({ title: err.message || '加载失败', icon: 'none' })
+        await DIALOG.showError(err, '加载失败')
       }
     }
   },
@@ -169,32 +170,26 @@ Page({
 
   showFamilyPicker() {
     const { families, currentFamilyId, canSwitchFamily } = this.data
-    if (!canSwitchFamily || families.length <= 1) return
-    wx.showActionSheet({
-      itemList: families.map(f => f.name),
-      success: async (res) => {
-        const picked = families[res.tapIndex]
-        if (picked.id === currentFamilyId) return
-        MENU.setCurrentFamilyId(picked.id)
-        this.setData({ loading: true })
-        const ctx = await PARTY.resolveOrderContext(families)
-        this.setData({
-          currentFamilyId: ctx.currentFamilyId,
-          currentFamilyName: ctx.currentFamilyName,
-          inPartyMode: ctx.inPartyMode,
-          partyName: ctx.partyName,
-          joinCode: ctx.joinCode,
-          isPartyGuest: ctx.isPartyGuest,
-          canSwitchFamily: ctx.canSwitchFamily,
-        })
-        this.connectWs(ctx.currentFamilyId)
-        await this.loadCookInfo()
-        if (this.data.activeTab === 'history') {
-          await this.loadHistory(false)
-        } else {
-          await this.loadSummary(false)
-        }
-      },
+    if (!canSwitchFamily) return
+    FAMILY_SWITCH.pickFamily(families, currentFamilyId).then(async (picked) => {
+      if (!picked || Number(picked.id) === Number(currentFamilyId)) return
+      FAMILY_SWITCH.applyFamilySwitch(picked)
+      this.setData({
+        loading: true,
+        currentFamilyId: picked.id,
+        currentFamilyName: picked.name,
+        inPartyMode: false,
+        partyName: '',
+        joinCode: '',
+        isPartyGuest: false,
+      })
+      this.connectWs(picked.id)
+      await this.loadCookInfo()
+      if (this.data.activeTab === 'history') {
+        await this.loadHistory(false)
+      } else {
+        await this.loadSummary(false)
+      }
     })
   },
 
@@ -217,7 +212,7 @@ Page({
           wx.showToast({ title: '订单已提交', icon: 'success' })
           await this.loadSummary(true)
         } catch (err) {
-          wx.showToast({ title: err.message || '提交失败', icon: 'none' })
+          await DIALOG.showError(err, '提交失败')
         } finally {
           wx.hideLoading()
           this.setData({ submitting: false })

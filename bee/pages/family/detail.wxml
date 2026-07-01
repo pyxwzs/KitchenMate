@@ -9,12 +9,12 @@
       <view class="hero-info">
         <view class="family-name">{{family.name}}</view>
         <view class="hero-meta">
-          <view class="role-tag role-{{family.my_role}}">{{roleLabels[family.my_role]}}</view>
+          <view class="role-tag role-{{family.my_is_owner ? 'owner' : family.my_role}}">{{family.myRoleLabel}}</view>
           <text class="member-total">{{family.members.length}} 位成员</text>
         </view>
-        <view class="cook-line" wx:if="{{family.cook}}">
-          <van-icon name="fire-o" size="28rpx" color="#e64340" />
-          <text>{{family.cook.display_name}} 掌勺</text>
+        <view class="cook-line" wx:if="{{family.menuMembersLabel}}">
+          <van-icon name="shop-o" size="28rpx" color="#e64340" />
+          <text>已上架：{{family.menuMembersLabel}}</text>
         </view>
       </view>
     </view>
@@ -64,14 +64,19 @@
     </view>
   </view>
 
+  <view wx:if="{{activeParty && !activeParty.is_host && !activeParty.is_guest}}" class="party-join-banner" bindtap="goJoinParty">
+    <van-icon name="gift-o" size="32rpx" color="#e64340" />
+    <text>聚会「{{activeParty.name}}」进行中，点击加入 →</text>
+  </view>
+
   <view class="quick-row" wx:if="{{family}}">
     <view class="quick-btn primary" bindtap="goOrder">
       <van-icon name="shop-o" size="36rpx" color="#fff" />
       <text>开始点餐</text>
     </view>
-    <view class="quick-btn" wx:if="{{isCook}}" bindtap="goMyDishes">
+    <view class="quick-btn" bindtap="goMyDishes">
       <van-icon name="setting-o" size="36rpx" color="#e64340" />
-      <text>我会做的菜</text>
+      <text>我的菜品</text>
     </view>
   </view>
 
@@ -84,7 +89,7 @@
 
     <view class="member-list">
       <view
-        class="member-item {{isAdmin && item.user_id !== myUserId ? 'tappable' : ''}}"
+        class="member-item {{item.manageable ? 'tappable' : ''}}"
         wx:for="{{family.members}}"
         wx:key="id"
         bindtap="onMemberTap"
@@ -96,9 +101,9 @@
             {{item.displayName}}
             <text wx:if="{{item.user_id === myUserId}}" class="me-tag">我</text>
           </view>
-          <view class="role-tag role-{{item.role}}">{{roleLabels[item.role]}}</view>
+          <view class="role-tag role-{{item.is_owner ? 'owner' : item.role}}">{{item.roleLabel}}</view>
         </view>
-        <view wx:if="{{isAdmin && item.user_id !== myUserId}}" class="edit-hint">
+        <view wx:if="{{item.manageable}}" class="edit-hint">
           <text>管理</text>
           <van-icon name="arrow" size="28rpx" color="#ccc" />
         </view>
@@ -107,18 +112,19 @@
 
     <view wx:if="{{isAdmin}}" class="admin-tip">
       <van-icon name="info-o" size="28rpx" color="#999" />
-      <text>管理员负责掌勺；点击成员可修改角色或移出家庭</text>
+      <text wx:if="{{isOwner}}">超级管理员可管理所有成员；管理员可提升成员、移出普通成员</text>
+      <text wx:else>管理员可提升成员、移出普通成员；管理其他管理员需超级管理员权限</text>
     </view>
   </view>
 
   <view class="leave-section">
     <view wx:if="{{isOnlyAdmin}}" class="leave-tip">
-      你是唯一管理员，需先将其他成员设为管理员后才能退出；或直接删除家庭
+      你是唯一管理员，需先将其他成员设为管理员后才能退出{{isOwner ? '；或直接删除家庭' : ''}}
     </view>
     <view class="leave-btn {{isOnlyAdmin ? 'disabled' : ''}}" bindtap="leaveFamily">
       退出家庭
     </view>
-    <view wx:if="{{isAdmin}}" class="delete-btn" bindtap="deleteFamily">
+    <view wx:if="{{isOwner}}" class="delete-btn" bindtap="deleteFamily">
       删除家庭
     </view>
   </view>

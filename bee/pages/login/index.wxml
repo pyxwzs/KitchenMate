@@ -37,7 +37,8 @@
   >
     <view class="profile-dialog">
       <view class="profile-title">完善个人资料</view>
-      <view class="profile-subtitle">请先完成微信登录，再选择头像并填写资料</view>
+      <view class="profile-subtitle" wx:if="{{pendingActionText}}">请先完善头像、昵称和真实姓名，再{{pendingActionText}}</view>
+      <view class="profile-subtitle" wx:else>请先完成微信登录，再选择头像并填写资料</view>
 
       <view wx:if="{{isLoggedIn}}" class="login-ok-tag">
         <van-icon name="success" size="28rpx" color="#52c41a" />
@@ -98,7 +99,7 @@
         custom-class="login-btn"
         bind:click="submitProfile"
       >
-        完成并进入
+        {{profileSubmitText}}
       </van-button>
     </view>
   </van-popup>

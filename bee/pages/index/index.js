@@ -1,9 +1,10 @@
 const FAMILY = require('../../utils/family')
+const FAMILY_SWITCH = require('../../utils/familySwitch')
 const MENU = require('../../utils/menu')
-const CART = require('../../utils/cart')
 const ORDER = require('../../utils/order')
 const ORDER_WS = require('../../utils/orderWs')
 const PARTY = require('../../utils/party')
+const DIALOG = require('../../utils/dialog')
 
 Page({
   data: {
@@ -11,21 +12,26 @@ Page({
     families: [],
     currentFamilyId: null,
     currentFamilyName: '',
-    cookName: '',
-    cookUserId: null,
-    isCook: false,
+    myUserId: null,
+    menuSubtitle: '',
+    dishGroups: [],
+    menuMembers: [],
+    menuFilterMemberId: '',
+    menuFilterLabel: '全部菜单',
+    menuFilterOptions: [],
+    canFilterMenu: false,
     dishes: [],
     menuEmpty: false,
     cartItems: [],
     cartCount: 0,
     cartShow: false,
-    submitting: false,
+    cartUpdating: false,
     addSheetShow: false,
     addSheetDish: null,
     addSheetQty: 1,
     addSheetNote: '',
     noteEditShow: false,
-    noteEditDishId: null,
+    noteEditItemId: null,
     noteEditValue: '',
     tableTotal: 0,
     tableDishes: [],
@@ -36,8 +42,13 @@ Page({
     canSwitchFamily: false,
   },
 
+  onLoad() {
+    this.setData({ myUserId: wx.getStorageSync('uid') })
+  },
+
   onShow() {
     getApp().ensureLogin().then(() => {
+      this.setData({ myUserId: wx.getStorageSync('uid') })
       this.bootstrap()
     }).catch(() => {
       this.setData({ loading: false })
@@ -96,8 +107,27 @@ Page({
       await Promise.all([this.loadMenu(), this.loadTableSummary(false)])
     } catch (err) {
       this.setData({ loading: false })
-      wx.showToast({ title: err.message || '加载失败', icon: 'none' })
+      await DIALOG.showError(err, '加载失败')
     }
+  },
+
+  applySessionToDishes(dishes, summary) {
+    const qtyMap = ORDER.getMyDishQuantities(summary, this.data.myUserId)
+    return dishes.map((d) => Object.assign({}, d, {
+      cartQty: qtyMap[d.id] || 0,
+    }))
+  },
+
+  applySessionSummary(summary) {
+    const cartItems = ORDER.flattenTableCartItems(summary, this.data.myUserId)
+    const dishes = this.applySessionToDishes(this.data.dishes, summary)
+    this.setData(Object.assign({
+      tableTotal: summary.total_dishes || 0,
+      tableDishes: summary.dish_totals || [],
+      cartItems,
+      cartCount: summary.total_dishes || 0,
+      dishes,
+    }, this.buildMenuViewState(dishes, this.data.menuMembers, this.data.menuFilterMemberId)))
   },
 
   async loadTableSummary(silent) {
@@ -106,61 +136,58 @@ Page({
     try {
       const raw = await ORDER.getOrderSummary(currentFamilyId)
       const summary = await ORDER.resolveSummaryImages(raw)
-      this.setData({
-        tableTotal: summary.total_dishes || 0,
-        tableDishes: summary.dish_totals || [],
-      })
+      this.applySessionSummary(summary)
     } catch (err) {
       if (!silent) {
-        wx.showToast({ title: err.message || '加载失败', icon: 'none' })
+        await DIALOG.showError(err, '加载失败')
       }
     }
   },
 
-  syncCartToDishes(dishes) {
-    const { currentFamilyId } = this.data
-    const cartItems = CART.getCart(currentFamilyId)
-    const cartMap = {}
-    cartItems.forEach(i => { cartMap[i.dishId] = i.quantity })
-    return dishes.map(d => ({
-      ...d,
-      cartQty: cartMap[d.id] || 0,
-    }))
-  },
-
-  refreshCart() {
-    const { currentFamilyId, dishes } = this.data
-    const cartItems = CART.getCart(currentFamilyId)
-    this.setData({
-      cartItems,
-      cartCount: CART.getTotalCount(cartItems),
-      dishes: this.syncCartToDishes(dishes),
-    })
+  buildMenuViewState(dishes, menuMembers, menuFilterMemberId) {
+    const filterId = menuFilterMemberId || ''
+    const options = MENU.buildMenuFilterOptions(menuMembers)
+    let activeFilterId = filterId
+    if (activeFilterId && !options.some((o) => String(o.id) === String(activeFilterId))) {
+      activeFilterId = ''
+    }
+    return {
+      menuMembers,
+      menuFilterMemberId: activeFilterId,
+      menuFilterLabel: MENU.menuFilterLabel(menuMembers, activeFilterId),
+      menuFilterOptions: options,
+      canFilterMenu: options.length > 0,
+      dishGroups: MENU.applyMenuFilter(dishes, menuMembers, activeFilterId),
+    }
   },
 
   async loadMenu() {
     const { currentFamilyId } = this.data
-    const myUserId = wx.getStorageSync('uid')
     try {
       const raw = await MENU.getFamilyMenu(currentFamilyId)
       const menu = await MENU.formatFamilyMenuAsync(raw)
-      const cook = menu.cook || {}
+      const menuMembers = menu.menu_members || menu.cooks || []
       let dishes = menu.dishes || []
-      dishes = this.syncCartToDishes(dishes)
-      const cartItems = CART.getCart(currentFamilyId)
-      this.setData({
-        cookName: cook.display_name || '',
-        cookUserId: cook.id,
-        isCook: cook.id === myUserId,
+      const rawSummary = await ORDER.getOrderSummary(currentFamilyId).catch(() => null)
+      const summary = rawSummary
+        ? await ORDER.resolveSummaryImages(rawSummary)
+        : { total_dishes: 0, dish_totals: [], by_user: [] }
+      dishes = this.applySessionToDishes(dishes, summary)
+      const cartItems = ORDER.flattenTableCartItems(summary, this.data.myUserId)
+      this.setData(Object.assign({
+        menuSubtitle: MENU.buildMenuSubtitle(menuMembers, menu.is_party_menu),
         dishes,
         menuEmpty: dishes.length === 0,
         cartItems,
-        cartCount: CART.getTotalCount(cartItems),
+        cartCount: summary.total_dishes || 0,
+        tableTotal: summary.total_dishes || 0,
+        tableDishes: summary.dish_totals || [],
         loading: false,
-      })
+        menuFilterMemberId: '',
+      }, this.buildMenuViewState(dishes, menuMembers, '')))
     } catch (err) {
       this.setData({ loading: false })
-      wx.showToast({ title: err.message || '菜单加载失败', icon: 'none' })
+      await DIALOG.showError(err, '菜单加载失败')
     }
   },
 
@@ -192,22 +219,34 @@ Page({
     this.setData({ addSheetNote: e.detail.value })
   },
 
-  confirmAddSheet() {
-    const { addSheetDish, addSheetQty, addSheetNote, currentFamilyId } = this.data
-    if (!addSheetDish) return
-    CART.addItem(currentFamilyId, addSheetDish, addSheetQty)
-    if (addSheetNote.trim()) {
-      CART.updateNote(currentFamilyId, addSheetDish.id, addSheetNote.trim())
+  async confirmAddSheet() {
+    const { addSheetDish, addSheetQty, addSheetNote, currentFamilyId, cartUpdating } = this.data
+    if (!addSheetDish || cartUpdating) return
+    this.setData({ cartUpdating: true })
+    try {
+      const note = addSheetNote.trim()
+      if (note) {
+        await ORDER.addToSession(currentFamilyId, [{
+          dish_id: addSheetDish.id,
+          quantity: addSheetQty,
+          note,
+        }])
+      } else {
+        await ORDER.adjustItem(currentFamilyId, addSheetDish.id, addSheetQty)
+      }
+      wx.vibrateShort({ type: 'light' })
+      this.setData({ addSheetShow: false, addSheetDish: null })
+      await this.loadTableSummary(true)
+    } catch (err) {
+      await DIALOG.showError(err, '加菜失败')
+    } finally {
+      this.setData({ cartUpdating: false })
     }
-    this.refreshCart()
-    wx.vibrateShort({ type: 'light' })
-    this.setData({ addSheetShow: false, addSheetDish: null })
   },
 
-  // 购物车内编辑备注
   openNoteEdit(e) {
     const { id, note } = e.currentTarget.dataset
-    this.setData({ noteEditShow: true, noteEditDishId: id, noteEditValue: note || '' })
+    this.setData({ noteEditShow: true, noteEditItemId: id, noteEditValue: note || '' })
   },
 
   closeNoteEdit() {
@@ -218,38 +257,75 @@ Page({
     this.setData({ noteEditValue: e.detail.value })
   },
 
-  confirmNoteEdit() {
-    const { noteEditDishId, noteEditValue, currentFamilyId } = this.data
-    CART.updateNote(currentFamilyId, noteEditDishId, noteEditValue)
-    this.refreshCart()
-    this.setData({ noteEditShow: false })
+  async confirmNoteEdit() {
+    const { noteEditItemId, noteEditValue, currentFamilyId, cartUpdating } = this.data
+    if (!noteEditItemId || cartUpdating) return
+    this.setData({ cartUpdating: true })
+    try {
+      await ORDER.updateOrderItem(currentFamilyId, noteEditItemId, {
+        note: noteEditValue,
+      })
+      this.setData({ noteEditShow: false })
+      await this.loadTableSummary(true)
+    } catch (err) {
+      await DIALOG.showError(err, '保存失败')
+    } finally {
+      this.setData({ cartUpdating: false })
+    }
   },
 
-  minusDish(e) {
+  async minusDish(e) {
     const dishId = e.currentTarget.dataset.id
-    const { currentFamilyId, dishes } = this.data
-    const dish = dishes.find(d => d.id === dishId)
-    if (!dish) return
-    CART.updateQuantity(currentFamilyId, dishId, (dish.cartQty || 0) - 1)
-    this.refreshCart()
+    const { currentFamilyId, cartUpdating } = this.data
+    if (cartUpdating) return
+    this.setData({ cartUpdating: true })
+    try {
+      await ORDER.adjustItem(currentFamilyId, dishId, -1)
+      await this.loadTableSummary(true)
+    } catch (err) {
+      await DIALOG.showError(err, '操作失败')
+    } finally {
+      this.setData({ cartUpdating: false })
+    }
   },
 
-  plusCartItem(e) {
-    const dishId = e.currentTarget.dataset.id
-    const { currentFamilyId, cartItems } = this.data
-    const item = cartItems.find(i => i.dishId === dishId)
-    if (!item) return
-    CART.updateQuantity(currentFamilyId, dishId, item.quantity + 1)
-    this.refreshCart()
+  async plusCartItem(e) {
+    const dishId = e.currentTarget.dataset.dishId
+    const { currentFamilyId, cartUpdating } = this.data
+    if (cartUpdating) return
+    this.setData({ cartUpdating: true })
+    try {
+      await ORDER.adjustItem(currentFamilyId, dishId, 1)
+      await this.loadTableSummary(true)
+    } catch (err) {
+      await DIALOG.showError(err, '操作失败')
+    } finally {
+      this.setData({ cartUpdating: false })
+    }
   },
 
-  minusCartItem(e) {
-    const dishId = e.currentTarget.dataset.id
-    const { currentFamilyId, cartItems } = this.data
-    const item = cartItems.find(i => i.dishId === dishId)
-    if (!item) return
-    CART.updateQuantity(currentFamilyId, dishId, item.quantity - 1)
-    this.refreshCart()
+  async minusCartItem(e) {
+    const itemId = e.currentTarget.dataset.id
+    const dishId = e.currentTarget.dataset.dishId
+    const { currentFamilyId, cartUpdating, cartItems } = this.data
+    if (cartUpdating) return
+    const item = cartItems.find((i) => Number(i.id) === Number(itemId))
+    if (!item || !item.isMine) return
+    this.setData({ cartUpdating: true })
+    try {
+      if (item.quantity <= 1) {
+        await ORDER.updateOrderItem(currentFamilyId, itemId, { quantity: 0 })
+      } else {
+        await ORDER.updateOrderItem(currentFamilyId, itemId, {
+          quantity: item.quantity - 1,
+        })
+      }
+      await this.loadTableSummary(true)
+    } catch (err) {
+      await DIALOG.showError(err, '操作失败')
+    } finally {
+      this.setData({ cartUpdating: false })
+    }
   },
 
   openCart() {
@@ -258,42 +334,6 @@ Page({
 
   closeCart() {
     this.setData({ cartShow: false })
-  },
-
-  clearCart() {
-    const { currentFamilyId } = this.data
-    CART.clearCart(currentFamilyId)
-    this.refreshCart()
-  },
-
-  async submitOrder() {
-    const { currentFamilyId, submitting } = this.data
-    if (submitting) {
-      return
-    }
-
-    const cartItems = CART.getCart(currentFamilyId)
-    if (!cartItems.length) {
-      wx.showToast({ title: '请先选择菜品', icon: 'none' })
-      return
-    }
-
-    this.setData({ submitting: true })
-    wx.showLoading({ title: '加菜中...', mask: true })
-
-    try {
-      await ORDER.addToSession(currentFamilyId, CART.toOrderPayload(cartItems))
-      CART.clearCart(currentFamilyId)
-      this.setData({ cartShow: false })
-      this.refreshCart()
-      await this.loadTableSummary(true)
-      wx.showToast({ title: '已加到本桌', icon: 'success' })
-    } catch (err) {
-      wx.showToast({ title: err.message || '加菜失败', icon: 'none' })
-    } finally {
-      wx.hideLoading()
-      this.setData({ submitting: false })
-    }
   },
 
   goTableOrders() {
@@ -306,28 +346,50 @@ Page({
 
   showFamilyPicker() {
     const { families, currentFamilyId, canSwitchFamily } = this.data
-    if (!canSwitchFamily || families.length <= 1) return
+    if (!canSwitchFamily) return
+    FAMILY_SWITCH.pickFamily(families, currentFamilyId).then(async (picked) => {
+      if (!picked || Number(picked.id) === Number(currentFamilyId)) return
+      FAMILY_SWITCH.applyFamilySwitch(picked)
+      this.setData({
+        loading: true,
+        currentFamilyId: picked.id,
+        currentFamilyName: picked.name,
+        inPartyMode: false,
+        partyName: '',
+        joinCode: '',
+        isPartyGuest: false,
+        menuFilterMemberId: '',
+      })
+      this.connectWs(picked.id)
+      await Promise.all([this.loadMenu(), this.loadTableSummary(false)])
+    })
+  },
+
+  showMenuFilterPicker() {
+    const { menuFilterOptions, menuFilterMemberId } = this.data
+    if (!menuFilterOptions.length) return
     wx.showActionSheet({
-      itemList: families.map(f => f.name),
-      success: async (res) => {
-        const picked = families[res.tapIndex]
-        if (picked.id === currentFamilyId) return
-        MENU.setCurrentFamilyId(picked.id)
-        this.setData({ loading: true })
-        const ctx = await PARTY.resolveOrderContext(families)
-        this.setData({
-          currentFamilyId: ctx.currentFamilyId,
-          currentFamilyName: ctx.currentFamilyName,
-          inPartyMode: ctx.inPartyMode,
-          partyName: ctx.partyName,
-          joinCode: ctx.joinCode,
-          isPartyGuest: ctx.isPartyGuest,
-          canSwitchFamily: ctx.canSwitchFamily,
-        })
-        this.connectWs(ctx.currentFamilyId)
-        await Promise.all([this.loadMenu(), this.loadTableSummary(false)])
+      itemList: menuFilterOptions.map((o) => {
+        const mark = String(o.id) === String(menuFilterMemberId) ? ' ✓' : ''
+        return `${o.label}${mark}`
+      }),
+      success: (res) => {
+        const picked = menuFilterOptions[res.tapIndex]
+        if (!picked) return
+        this.setMenuFilter(picked.id)
       },
     })
+  },
+
+  onMenuFilterTap(e) {
+    const { id } = e.currentTarget.dataset
+    this.setMenuFilter(id)
+  },
+
+  setMenuFilter(memberId) {
+    const { dishes, menuMembers, menuFilterMemberId } = this.data
+    if (String(memberId) === String(menuFilterMemberId)) return
+    this.setData(this.buildMenuViewState(dishes, menuMembers, memberId))
   },
 
   goFamily() {

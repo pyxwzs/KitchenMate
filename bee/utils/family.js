@@ -1,11 +1,34 @@
 const request = require('./request')
 
+const ROLE_LABELS = {
+  admin: '管理员',
+  member: '成员',
+  owner: '超级管理员',
+}
+
+function displayRole(role, isOwner) {
+  if (isOwner) return ROLE_LABELS.owner
+  return ROLE_LABELS[role] || '成员'
+}
+
+function canManageMember(viewer, member) {
+  if (!viewer.isAdmin) return false
+  if (member.user_id === viewer.myUserId) return false
+  if (member.is_owner) return false
+  if (member.role === 'admin' && !viewer.isOwner) return false
+  return true
+}
+
 function listFamilies() {
   return request({ url: '/families', method: 'GET' })
 }
 
 function createFamily(name) {
-  return request({ url: '/families', method: 'POST', data: { name } })
+  return request({
+    url: '/families',
+    method: 'POST',
+    data: { name },
+  })
 }
 
 function getFamilyDetail(familyId) {
@@ -53,18 +76,6 @@ function deleteFamily(familyId) {
   })
 }
 
-const ROLE_LABELS = {
-  admin: '管理员（掌勺）',
-  chef: '厨师',
-  diner: '食客',
-}
-
-function isWxacodeResponse(header) {
-  if (!header) return false
-  const type = header['X-QR-Type'] || header['x-qr-type'] || ''
-  return String(type).toLowerCase() === 'wxacode'
-}
-
 function downloadFamilyWxacode(familyId) {
   const CONFIG = require('../config.js')
   const token = wx.getStorageSync('token')
@@ -89,6 +100,12 @@ function downloadFamilyWxacode(familyId) {
   })
 }
 
+function isWxacodeResponse(header) {
+  if (!header) return false
+  const type = header['X-QR-Type'] || header['x-qr-type'] || ''
+  return String(type).toLowerCase() === 'wxacode'
+}
+
 module.exports = {
   listFamilies,
   createFamily,
@@ -101,4 +118,6 @@ module.exports = {
   deleteFamily,
   downloadFamilyWxacode,
   ROLE_LABELS,
+  displayRole,
+  canManageMember,
 }

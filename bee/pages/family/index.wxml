@@ -39,13 +39,28 @@
   </view>
 
   <view wx:else class="section">
+    <view
+      wx:if="{{currentFamilyId}}"
+      class="current-family-bar {{canSwitchFamily ? 'tappable' : ''}}"
+      bindtap="showFamilyPicker"
+    >
+      <view class="current-family-left">
+        <van-icon name="location-o" size="32rpx" color="#e64340" />
+        <text class="current-family-label">当前家庭</text>
+        <text class="current-family-name">{{currentFamilyName}}</text>
+      </view>
+      <view wx:if="{{canSwitchFamily}}" class="current-family-switch">
+        <text>切换</text>
+        <van-icon name="arrow-down" size="24rpx" color="#C4A57B" />
+      </view>
+    </view>
     <view class="section-title">
       <view class="title-dot"></view>
       <text>我的家庭（{{families.length}}）</text>
     </view>
     <view class="family-list">
       <view
-        class="family-card"
+        class="family-card {{item.id === currentFamilyId ? 'is-current' : ''}}"
         wx:for="{{families}}"
         wx:key="id"
         data-id="{{item.id}}"
@@ -55,7 +70,10 @@
           <van-icon name="home-o" size="48rpx" color="#e64340" />
         </view>
         <view class="family-body">
-          <view class="family-name">{{item.name}}</view>
+          <view class="family-name-row">
+            <view class="family-name">{{item.name}}</view>
+            <view wx:if="{{item.id === currentFamilyId}}" class="current-tag">当前</view>
+          </view>
           <view class="family-meta">
             <view class="role-tag role-{{item.my_role}}">{{roleLabels[item.my_role] || '成员'}}</view>
             <text class="member-count">{{item.member_count}} 位成员</text>

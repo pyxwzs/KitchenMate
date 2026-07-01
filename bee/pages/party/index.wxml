@@ -56,7 +56,7 @@
       <view class="action-btn" bindtap="goOrders">看本桌订单</view>
     </view>
 
-    <view wx:if="{{party.is_host || party.is_member}}" class="close-btn" bindtap="closeParty">
+    <view wx:if="{{canCloseParty}}" class="close-btn" bindtap="closeParty">
       {{closing ? '结束中...' : '结束聚会'}}
     </view>
   </view>

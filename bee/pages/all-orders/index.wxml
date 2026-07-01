@@ -33,7 +33,7 @@
             <view class="top-bar-cook" wx:if="{{inPartyMode}}">
               {{isPartyGuest ? '聚会来宾 · 共享点餐' : currentFamilyName + ' · 聚会模式'}}
             </view>
-            <view class="top-bar-cook" wx:elif="{{cookName}}">{{cookName}} 掌勺中</view>
+            <view class="top-bar-cook" wx:elif="{{menuSubtitle}}">{{menuSubtitle}}</view>
           </view>
         </view>
         <view class="top-bar-right" wx:if="{{canSwitchFamily}}">
@@ -88,10 +88,35 @@
         </view>
       </view>
 
+      <view wx:if="{{summary.by_cook.length > 0}}" class="section">
+        <view class="section-header">
+          <view class="section-dot"></view>
+          <text>谁来做哪道菜</text>
+        </view>
+        <view class="user-group" wx:for="{{summary.by_cook}}" wx:key="cook_user_id">
+          <view class="user-group-header cook-header">
+            <view class="user-avatar cook">{{item.cook_name[0]}}</view>
+            <text class="user-name">{{item.cook_name}} 做</text>
+          </view>
+          <view class="user-items">
+            <view class="user-item" wx:for="{{item.items}}" wx:for-item="dish" wx:key="id">
+              <view class="user-item-main">
+                <view class="user-item-top">
+                  <text class="user-item-name">{{dish.dish_name}}</text>
+                  <text class="user-item-qty">×{{dish.quantity}}</text>
+                </view>
+                <text wx:if="{{dish.note}}" class="user-item-note">📝 {{dish.note}}</text>
+                <text wx:if="{{dish.cook_name}}" class="user-item-note maker">由 {{dish.cook_name}} 做</text>
+              </view>
+            </view>
+          </view>
+        </view>
+      </view>
+
       <view wx:if="{{summary.by_user.length > 0}}" class="section">
         <view class="section-header">
           <view class="section-dot"></view>
-          <text>各人点餐</text>
+          <text>谁点了什么</text>
         </view>
         <view class="user-group" wx:for="{{summary.by_user}}" wx:key="user_id">
           <view class="user-group-header">
@@ -106,6 +131,7 @@
                   <text class="user-item-qty">×{{dish.quantity}}</text>
                 </view>
                 <text wx:if="{{dish.note}}" class="user-item-note">📝 {{dish.note}}</text>
+                <text wx:if="{{dish.cook_name}}" class="user-item-note maker">由 {{dish.cook_name}} 做</text>
               </view>
             </view>
           </view>
@@ -122,7 +148,7 @@
       <view wx:if="{{!loading && summary.total_dishes === 0}}" class="empty-box">
         <text class="empty-emoji">📋</text>
         <view class="empty-title">本桌还没有点菜</view>
-        <view class="empty-desc">去点餐页选菜，确认加菜后这里会实时汇总</view>
+        <view class="empty-desc">去点餐页选菜，加入本桌后这里会实时汇总</view>
         <view class="btn-primary mt32" bindtap="goOrder">去点餐</view>
       </view>
 

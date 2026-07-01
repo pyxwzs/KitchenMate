@@ -9,6 +9,26 @@ function addToSession(familyId, items, note) {
   })
 }
 
+function adjustItem(familyId, dishId, delta, note) {
+  const data = { dish_id: dishId, delta }
+  if (note) {
+    data.note = note
+  }
+  return request({
+    url: `/families/${familyId}/orders/adjust`,
+    method: 'POST',
+    data,
+  })
+}
+
+function updateOrderItem(familyId, itemId, payload) {
+  return request({
+    url: `/families/${familyId}/orders/items/${itemId}`,
+    method: 'PATCH',
+    data: payload,
+  })
+}
+
 function lockSession(familyId) {
   return request({
     url: `/families/${familyId}/orders/lock`,
@@ -147,11 +167,56 @@ async function resolveSummaryImages(summary) {
   const session = summary.session
     ? await resolveSessionImages(summary.session)
     : null
-  return { ...summary, dish_totals: dishTotals, by_user: byUser, session }
+  return { summary, dish_totals: dishTotals, by_user: byUser, session }
+}
+
+function getMyDishQuantities(summary, myUserId) {
+  const map = {}
+  const uid = Number(myUserId)
+  const users = summary && summary.by_user ? summary.by_user : []
+  for (let i = 0; i < users.length; i++) {
+    const user = users[i]
+    if (Number(user.user_id) !== uid) continue
+    const items = user.items || []
+    for (let j = 0; j < items.length; j++) {
+      const item = items[j]
+      const dishId = item.dish_id
+      map[dishId] = (map[dishId] || 0) + item.quantity
+    }
+  }
+  return map
+}
+
+function flattenTableCartItems(summary, myUserId) {
+  const list = []
+  const uid = Number(myUserId)
+  const users = summary && summary.by_user ? summary.by_user : []
+  for (let i = 0; i < users.length; i++) {
+    const user = users[i]
+    const items = user.items || []
+    for (let j = 0; j < items.length; j++) {
+      const item = items[j]
+      list.push({
+        id: item.id,
+        dishId: item.dish_id,
+        name: item.dish_name,
+        imageUrl: item.imageUrl,
+        quantity: item.quantity,
+        note: item.note || '',
+        userId: item.user_id,
+        userName: item.user_name,
+        cookName: item.cook_name || '',
+        isMine: Number(item.user_id) === uid,
+      })
+    }
+  }
+  return list
 }
 
 module.exports = {
   addToSession,
+  adjustItem,
+  updateOrderItem,
   lockSession,
   getHistoryOrders,
   getOrderSummary,
@@ -160,6 +225,8 @@ module.exports = {
   resolveSessionImages,
   enrichHistorySession,
   formatOrderTime,
+  getMyDishQuantities,
+  flattenTableCartItems,
   STATUS_LABELS,
   STATUS_CLASS,
 }

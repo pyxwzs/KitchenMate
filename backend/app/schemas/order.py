@@ -11,6 +11,17 @@ class OrderItemInput(BaseModel):
     note: str | None = Field(None, max_length=100)
 
 
+class AdjustOrderItemRequest(BaseModel):
+    dish_id: int
+    delta: int = Field(..., ge=-99, le=99)
+    note: str | None = Field(None, max_length=100)
+
+
+class UpdateOrderItemRequest(BaseModel):
+    quantity: int | None = Field(None, ge=0, le=99)
+    note: str | None = Field(None, max_length=100)
+
+
 class AddToSessionRequest(BaseModel):
     items: list[OrderItemInput] = Field(..., min_length=1)
     note: str | None = Field(None, max_length=200)
@@ -25,6 +36,8 @@ class OrderItemResponse(BaseModel):
     image_url: str | None = None
     quantity: int
     note: str | None = None
+    cook_user_id: int | None = None
+    cook_name: str | None = None
 
 
 class OrderSessionResponse(BaseModel):
@@ -54,10 +67,17 @@ class UserOrderSummary(BaseModel):
     items: list[OrderItemResponse]
 
 
+class CookOrderSummary(BaseModel):
+    cook_user_id: int
+    cook_name: str
+    items: list[OrderItemResponse]
+
+
 class OrderSummaryResponse(BaseModel):
     family_id: int
     session_id: int | None = None
     total_dishes: int
     dish_totals: list[DishSummaryItem]
     by_user: list[UserOrderSummary]
+    by_cook: list[CookOrderSummary] = []
     session: OrderSessionResponse | None = None

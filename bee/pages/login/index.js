@@ -1,8 +1,11 @@
 const CONFIG = require('../../config.js')
 const AUTH = require('../../utils/auth')
 const API = require('../../utils/api')
+const PROFILE_GATE = require('../../utils/profileGate')
+const JOIN_ACTIONS = require('../../utils/joinActions')
 const { resolveAssetForDisplay } = require('../../utils/asset')
 const { getErrorMessage } = require('../../utils/error')
+const DIALOG = require('../../utils/dialog')
 
 Page({
   data: {
@@ -19,9 +22,14 @@ Page({
     displayAvatar: '',
     nickname: '',
     realName: '',
+    needProfile: false,
+    hasExistingAvatar: false,
+    pendingActionText: '',
+    profileSubmitText: '完成并进入',
   },
 
-  onLoad() {
+  onLoad(options) {
+    this._needProfile = options.needProfile === '1'
     this.bootstrap()
   },
 
@@ -31,6 +39,16 @@ Page({
 
   hasLoginToken() {
     return !!wx.getStorageSync('token')
+  },
+
+  refreshPendingUi() {
+    const pending = PROFILE_GATE.peekPending()
+    const needProfile = this._needProfile || !!pending
+    this.setData({
+      needProfile,
+      pendingActionText: PROFILE_GATE.pendingActionLabel(pending),
+      profileSubmitText: pending ? `完成并${PROFILE_GATE.pendingActionLabel(pending)}` : '完成并进入',
+    })
   },
 
   async openProfilePopup(user) {
@@ -43,6 +61,8 @@ Page({
     }
 
     const displayAvatar = await resolveAssetForDisplay(user.avatar_url)
+    const hasExistingAvatar = !!user.avatar_url
+    this.refreshPendingUi()
     this.setData({
       showProfilePopup: true,
       isLoggedIn: true,
@@ -52,24 +72,32 @@ Page({
       realName: user.real_name || '',
       avatarUrl: displayAvatar || '',
       displayAvatar: displayAvatar || '',
-      avatarTempPath: user.avatar_url ? '' : '',
+      avatarTempPath: hasExistingAvatar ? '__existing__' : '',
+      hasExistingAvatar,
     })
   },
 
   async bootstrap() {
     const app = getApp()
     app._loginPromise = null
+    this.refreshPendingUi()
 
     try {
       const loggedIn = await AUTH.checkHasLogined()
       if (!loggedIn) {
+        if (this._needProfile) {
+          await this.tryLogin()
+        }
         return
       }
 
       const user = await API.getMe()
       if (this.isProfileComplete(user)) {
-        await app.getUserApiInfo()
-        this.goHome()
+        const resumed = await this.resumePendingAction()
+        if (!resumed) {
+          await app.getUserApiInfo()
+          this.goHome()
+        }
         return
       }
 
@@ -93,8 +121,11 @@ Page({
       const user = await API.getMe()
 
       if (this.isProfileComplete(user)) {
-        await app.getUserApiInfo()
-        this.goHome()
+        const resumed = await this.resumePendingAction()
+        if (!resumed) {
+          await app.getUserApiInfo()
+          this.goHome()
+        }
         return
       }
 
@@ -136,8 +167,36 @@ Page({
     this.setData({ realName: e.detail.value })
   },
 
+  async resumePendingAction() {
+    const pending = PROFILE_GATE.consumePending()
+    if (!pending) {
+      return false
+    }
+
+    try {
+      if (pending.type === 'family_join') {
+        const family = await JOIN_ACTIONS.performFamilyJoin(pending.inviteCode)
+        wx.redirectTo({ url: `/pages/family/detail?id=${family.id}` })
+        return true
+      }
+      if (pending.type === 'party_join') {
+        const party = await JOIN_ACTIONS.performPartyJoin(pending.joinCode)
+        if (pending.redirectToOrder) {
+          wx.switchTab({ url: '/pages/index/index' })
+        } else {
+          wx.redirectTo({ url: '/pages/party/index' })
+        }
+        return true
+      }
+    } catch (err) {
+      await DIALOG.showError(err, '操作失败')
+      return true
+    }
+    return false
+  },
+
   async submitProfile() {
-    const { nickname, realName, avatarTempPath, submitting, isLoggedIn } = this.data
+    const { nickname, realName, avatarTempPath, submitting, isLoggedIn, hasExistingAvatar } = this.data
     if (submitting) {
       return
     }
@@ -155,7 +214,8 @@ Page({
       wx.showToast({ title: '请填写真实姓名', icon: 'none' })
       return
     }
-    if (!avatarTempPath) {
+    const needUploadAvatar = avatarTempPath && avatarTempPath !== '__existing__'
+    if (!needUploadAvatar && !hasExistingAvatar) {
       wx.showToast({ title: '请选择头像', icon: 'none' })
       return
     }
@@ -163,7 +223,9 @@ Page({
     this.setData({ submitting: true, profileError: '' })
 
     try {
-      await API.uploadAvatar(avatarTempPath)
+      if (needUploadAvatar) {
+        await API.uploadAvatar(avatarTempPath)
+      }
 
       await API.updateProfile({
         nickname: nickname.trim(),
@@ -172,7 +234,11 @@ Page({
 
       await getApp().getUserApiInfo()
       this.setData({ showProfilePopup: false, submitting: false })
-      this.goHome()
+
+      const resumed = await this.resumePendingAction()
+      if (!resumed) {
+        this.goHome()
+      }
     } catch (err) {
       this.setData({
         submitting: false,

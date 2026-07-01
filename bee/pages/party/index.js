@@ -1,7 +1,9 @@
 const FAMILY = require('../../utils/family')
 const PARTY = require('../../utils/party')
-const AUTH = require('../../utils/auth')
 const SCAN = require('../../utils/scan')
+const DIALOG = require('../../utils/dialog')
+const PROFILE_GATE = require('../../utils/profileGate')
+const JOIN_ACTIONS = require('../../utils/joinActions')
 
 Page({
   data: {
@@ -27,6 +29,7 @@ Page({
       title: '',
       subtitle: '',
     },
+    canCloseParty: false,
   },
 
   onLoad(options) {
@@ -83,7 +86,7 @@ Page({
       const latest = await PARTY.getMyParty()
       if (latest && latest.status === 'active' && latest.id === party.id) {
         PARTY.setPartyContext(latest)
-        this.setData({ party: latest })
+        this.setData(this.patchPartyState(latest, this.data.families, this.data.adminFamilies))
       }
     } catch {
       // ignore polling errors
@@ -107,14 +110,29 @@ Page({
     this.setData({ 'joinOverlay.show': false })
   },
 
-  async doJoinParty(joinCode, { redirectToOrder = false, fromScan = false } = {}) {
+  async doJoinParty(joinCode, options) {
+    options = options || {}
+    const redirectToOrder = !!options.redirectToOrder
+    const fromScan = !!options.fromScan
     this.setData({ joining: true, loading: false })
     this.showJoinOverlay('loading', '正在加入聚会', '请稍候...')
 
     try {
-      await AUTH.silentLogin()
-      const party = await PARTY.joinParty(joinCode)
-      PARTY.setPartyContext(party)
+      const ready = await PROFILE_GATE.ensureProfileReady({
+        pending: {
+          type: 'party_join',
+          joinCode,
+          redirectToOrder: !!redirectToOrder,
+          fromScan: !!fromScan,
+        },
+      })
+      if (!ready.ok) {
+        this.setData({ joining: false, loading: false, joinCode })
+        this.hideJoinOverlay()
+        return
+      }
+
+      const party = await JOIN_ACTIONS.performPartyJoin(joinCode)
 
       const subtitle = redirectToOrder
         ? '欢迎入席，即将进入点餐'
@@ -130,13 +148,13 @@ Page({
       }
 
       setTimeout(() => {
-        this.setData({
-          party,
+        const patch = this.patchPartyState(party, this.data.families, this.data.adminFamilies)
+        this.setData(Object.assign({}, patch, {
           mode: 'manage',
           loading: false,
           joining: false,
           joinCode: '',
-        })
+        }))
         this.hideJoinOverlay()
         this.startPartyRefresh()
       }, 1000)
@@ -148,25 +166,34 @@ Page({
         mode: 'hub',
       })
       this.hideJoinOverlay()
-      wx.showToast({
-        title: err.message || '加入失败，请手动输入聚会码',
-        icon: 'none',
-        duration: 2500,
-      })
+      await DIALOG.showError(err, '加入失败，请手动输入聚会码')
     }
+  },
+
+  patchPartyState(party, families, adminFamilies) {
+    const canCloseParty = !!(
+      party &&
+      (party.is_host || adminFamilies.some((f) => f.id === party.family_id))
+    )
+    return { party, families, adminFamilies, canCloseParty }
   },
 
   async bootstrap() {
     this.setData({ loading: true })
     try {
-      const [party, families] = await Promise.all([
+      const results = await Promise.all([
         PARTY.getMyParty().catch(() => null),
         FAMILY.listFamilies(),
       ])
+      const party = results[0]
+      const families = results[1]
       const adminFamilies = families.filter((f) => f.my_role === 'admin')
-      if (party && party.status === 'active') {
+      if (party && party.status === 'active' && PARTY.hasJoinedParty(party)) {
         PARTY.setPartyContext(party)
-        this.setData({ party, families, adminFamilies, mode: 'manage', loading: false })
+        this.setData(Object.assign({}, this.patchPartyState(party, families, adminFamilies), {
+          mode: 'manage',
+          loading: false,
+        }))
         this.startPartyRefresh()
       } else {
         this.stopPartyRefresh()
@@ -183,7 +210,7 @@ Page({
       }
     } catch (err) {
       this.setData({ loading: false })
-      wx.showToast({ title: err.message || '加载失败', icon: 'none' })
+      await DIALOG.showError(err, '加载失败')
     }
   },
 
@@ -195,7 +222,7 @@ Page({
     const { joinCode, joining } = this.data
     if (joining) return
     if (!joinCode.trim()) {
-      wx.showToast({ title: '请输入聚会码', icon: 'none' })
+      await DIALOG.showAlert('请输入聚会码')
       return
     }
     await this.doJoinParty(joinCode.trim())
@@ -208,14 +235,14 @@ Page({
       this.setData({ joinCode: code })
       await this.doJoinParty(code, { fromScan: true })
     } catch (err) {
-      wx.showToast({ title: err.message || '扫码失败', icon: 'none' })
+      await DIALOG.showError(err, '扫码失败')
     }
   },
 
-  showCreateDialog() {
+  async showCreateDialog() {
     const { adminFamilies } = this.data
     if (!adminFamilies.length) {
-      wx.showToast({ title: '需要管理员身份才能发起', icon: 'none' })
+      await DIALOG.showAlert('需要家庭管理员身份才能发起聚会')
       return
     }
     this.setData({
@@ -249,24 +276,23 @@ Page({
     const { createName, createFamilyId, creating, adminFamilies } = this.data
     if (creating) return
     if (!createName.trim()) {
-      wx.showToast({ title: '请输入聚会名称', icon: 'none' })
+      await DIALOG.showAlert('请输入聚会名称')
       return
     }
     this.setData({ creating: true })
     try {
       const party = await PARTY.startParty(createFamilyId, createName.trim())
       PARTY.setPartyContext(party)
-      this.setData({
-        party,
+      this.setData(Object.assign({}, this.patchPartyState(party, this.data.families, this.data.adminFamilies), {
         mode: 'manage',
         createDialogShow: false,
         creating: false,
-      })
+      }))
       this.startPartyRefresh()
       wx.showToast({ title: '聚会已开启', icon: 'success' })
     } catch (err) {
       this.setData({ creating: false })
-      wx.showToast({ title: err.message || '创建失败', icon: 'none' })
+      await DIALOG.showError(err, '创建失败')
     }
   },
 
@@ -277,8 +303,8 @@ Page({
 
     // 从后端获取官方小程序码（配置了 WECHAT_APP_ID/SECRET 时可用）
     try {
-      const { path, isOfficial } = await PARTY.downloadPartyWxacode(party.id)
-      this.setData({ qrImagePath: path, qrIsOfficial: isOfficial })
+      const qrResult = await PARTY.downloadPartyWxacode(party.id)
+      this.setData({ qrImagePath: qrResult.path, qrIsOfficial: qrResult.isOfficial })
     } catch (_) {
       // 未配置微信凭证（开发环境）：弹窗仅展示聚会码文字，无图片
       this.setData({ qrImagePath: '' })
@@ -322,8 +348,12 @@ Page({
   },
 
   closeParty() {
-    const { party, closing } = this.data
+    const { party, closing, canCloseParty } = this.data
     if (!party || closing) return
+    if (!canCloseParty) {
+      DIALOG.showAlert('只有聚会发起者或家庭管理员可以结束聚会')
+      return
+    }
     wx.showModal({
       title: '结束聚会',
       content: '结束后来宾不能再点餐，当前订单会一并提交',
@@ -339,7 +369,7 @@ Page({
           this.setData({ party: null, mode: 'hub', closing: false })
         } catch (err) {
           this.setData({ closing: false })
-          wx.showToast({ title: err.message || '操作失败', icon: 'none' })
+          await DIALOG.showError(err, '操作失败')
         }
       },
     })

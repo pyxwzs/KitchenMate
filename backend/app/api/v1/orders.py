@@ -3,8 +3,10 @@ from fastapi import APIRouter, Query
 from app.dependencies import CurrentUser, DbSession
 from app.schemas.order import (
     AddToSessionRequest,
+    AdjustOrderItemRequest,
     OrderSessionResponse,
     OrderSummaryResponse,
+    UpdateOrderItemRequest,
 )
 from app.services import order as order_service
 from app.ws.order_hub import notify_orders_updated
@@ -27,8 +29,65 @@ async def add_to_session(
     current_user: CurrentUser,
     db: DbSession,
 ) -> dict:
-    items = [{"dish_id": i.dish_id, "quantity": i.quantity} for i in body.items]
+    items = [
+        {"dish_id": i.dish_id, "quantity": i.quantity, "note": i.note}
+        for i in body.items
+    ]
     session = order_service.add_to_session(db, family_id, current_user.id, items, body.note)
+    await notify_orders_updated(family_id)
+    return _serialize_for_response(db, session, current_user.id)
+
+
+@router.post("/adjust")
+async def adjust_order_item(
+    family_id: int,
+    body: AdjustOrderItemRequest,
+    current_user: CurrentUser,
+    db: DbSession,
+) -> dict:
+    order_service.adjust_session_item(
+        db,
+        family_id,
+        current_user.id,
+        body.dish_id,
+        body.delta,
+        body.note,
+    )
+    await notify_orders_updated(family_id)
+    session = order_service._get_open_session(db, family_id)
+    if not session:
+        return {
+            "id": 0,
+            "family_id": family_id,
+            "cook_user_id": current_user.id,
+            "status": "open",
+            "status_label": "点餐中",
+            "note": None,
+            "locked_by_user_id": None,
+            "locked_by_name": None,
+            "locked_at": None,
+            "items": [],
+            "created_at": None,
+        }
+    return _serialize_for_response(db, session, current_user.id)
+
+
+@router.patch("/items/{item_id}", response_model=OrderSessionResponse)
+async def update_order_item(
+    family_id: int,
+    item_id: int,
+    body: UpdateOrderItemRequest,
+    current_user: CurrentUser,
+    db: DbSession,
+) -> dict:
+    session = order_service.update_session_item(
+        db,
+        family_id,
+        current_user.id,
+        item_id,
+        body.quantity,
+        body.note,
+    )
     await notify_orders_updated(family_id)
     return _serialize_for_response(db, session, current_user.id)
 

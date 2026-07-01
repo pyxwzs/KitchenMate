@@ -62,6 +62,54 @@
   margin-top: 32rpx;
 }
 
+.current-family-card {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background: #fff;
+  border-radius: 24rpx;
+  padding: 28rpx 32rpx;
+  box-shadow: 0 4rpx 16rpx rgba(0, 0, 0, 0.04);
+  border: 2rpx solid rgba(230, 67, 64, 0.12);
+}
+
+.current-family-card.tappable:active {
+  opacity: 0.85;
+}
+
+.current-family-left {
+  display: flex;
+  align-items: center;
+  gap: 16rpx;
+  min-width: 0;
+  flex: 1;
+}
+
+.current-family-title {
+  font-size: 24rpx;
+  color: #999;
+}
+
+.current-family-name {
+  margin-top: 4rpx;
+  font-size: 30rpx;
+  font-weight: 700;
+  color: #333;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.current-family-switch {
+  display: flex;
+  align-items: center;
+  gap: 4rpx;
+  font-size: 24rpx;
+  color: #C4A57B;
+  flex-shrink: 0;
+  margin-left: 16rpx;
+}
+
 .action-card {
   background: #fff;
   border-radius: 24rpx;

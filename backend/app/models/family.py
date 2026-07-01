@@ -10,8 +10,8 @@ from app.models.user import User
 
 class FamilyRole(str, enum.Enum):
     ADMIN = "admin"
-    CHEF = "chef"
-    DINER = "diner"
+    CHEF = "chef"  # 遗留，等同成员
+    DINER = "diner"  # 成员（内部存储）
 
 
 class Family(Base, TimestampMixin):

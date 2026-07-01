@@ -111,4 +111,4 @@ def update_member_role(
     member = family_service.update_member_role(
         db, family_id, current_user.id, member_id, body.role
     )
-    return {"id": member.id, "role": member.role}
+    return {"id": member.id, "role": family_service.role_to_public(member.role)}

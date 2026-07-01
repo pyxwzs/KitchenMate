@@ -1,4 +1,7 @@
 const CONFIG = require('../../config.js')
+const FAMILY = require('../../utils/family')
+const FAMILY_SWITCH = require('../../utils/familySwitch')
+const MENU = require('../../utils/menu')
 const PARTY = require('../../utils/party')
 
 Page({
@@ -7,6 +10,9 @@ Page({
     appName: CONFIG.appName,
     displayAvatar: '',
     activeParty: null,
+    currentFamilyId: null,
+    currentFamilyName: '',
+    canSwitchFamily: false,
   },
 
   onLoad() {
@@ -19,6 +25,45 @@ Page({
     getApp().ensureLogin().then(apiUserInfoMap => {
       this.processGotUserDetail(apiUserInfoMap)
       this.loadParty()
+      this.loadCurrentFamily()
+    }).catch(() => {})
+  },
+
+  async loadCurrentFamily() {
+    try {
+      const families = await FAMILY.listFamilies()
+      const currentFamilyId = MENU.getCurrentFamilyId()
+      const current = families.find((f) => Number(f.id) === Number(currentFamilyId)) || families[0]
+      if (current) {
+        MENU.setCurrentFamilyId(current.id)
+      }
+      this.setData({
+        currentFamilyId: current ? current.id : null,
+        currentFamilyName: current ? current.name : '',
+        canSwitchFamily: families.length > 1,
+      })
+    } catch {
+      this.setData({
+        currentFamilyId: null,
+        currentFamilyName: '',
+        canSwitchFamily: false,
+      })
+    }
+  },
+
+  showFamilyPicker() {
+    const { currentFamilyId, canSwitchFamily } = this.data
+    if (!canSwitchFamily) return
+    FAMILY.listFamilies().then((families) => {
+      FAMILY_SWITCH.pickFamily(families, currentFamilyId).then((picked) => {
+        if (!picked || Number(picked.id) === Number(currentFamilyId)) return
+        FAMILY_SWITCH.applyFamilySwitch(picked)
+        this.setData({
+          currentFamilyId: picked.id,
+          currentFamilyName: picked.name,
+        })
+        wx.showToast({ title: `已切换到「${picked.name}」`, icon: 'none' })
+      })
     }).catch(() => {})
   },
 

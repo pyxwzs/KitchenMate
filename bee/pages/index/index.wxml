@@ -36,14 +36,14 @@
             <view class="top-bar-cook" wx:if="{{inPartyMode}}">
               {{isPartyGuest ? '聚会来宾 · 共享点餐' : currentFamilyName + ' · 聚会模式'}}
             </view>
-            <view class="top-bar-cook" wx:elif="{{cookName}}">{{cookName}} 掌勺中</view>
+            <view class="top-bar-cook" wx:elif="{{menuSubtitle}}">{{menuSubtitle}}</view>
           </view>
         </view>
         <view class="top-bar-right" wx:if="{{canSwitchFamily}}">
           <text class="top-bar-switch">切换家庭</text>
           <van-icon name="arrow-down" size="24rpx" color="#C4A57B" />
         </view>
-        <view class="top-bar-right party-code" wx:elif="{{inPartyMode}}" catchtap="goParty">
+        <view class="top-bar-right party-code" wx:elif="{{inPartyMode}}">
           <text class="top-bar-switch">聚会码 {{joinCode}}</text>
         </view>
       </view>
@@ -77,67 +77,102 @@
     <view wx:if="{{menuEmpty}}" class="empty-box">
       <text class="empty-emoji">🍽️</text>
       <view class="empty-title">还没有菜品</view>
-      <view class="empty-desc" wx:if="{{isCook}}">你是掌勺，快去添加拿手菜吧~</view>
-      <view class="empty-desc" wx:else>{{cookName || '掌勺'}} 还没有上架菜品</view>
-      <view wx:if="{{isCook}}" class="btn-primary mt32" bindtap="goMyDishes">添加菜品</view>
+      <view class="empty-desc">{{inPartyMode ? '聚会参与者可在「我的菜品」上架菜品，创建者与众来宾的菜会合并展示' : '每位成员管理自己的菜单，去「我的菜品」添加并上架吧'}}</view>
+      <view class="btn-primary mt32" bindtap="goMyDishes">管理我的菜品</view>
     </view>
 
     <view wx:else class="grid-outer">
-      <view class="section-label">
-        <view class="section-dot"></view>
-        <text>菜单</text>
-        <text class="section-count">{{dishes.length}}道</text>
+      <view wx:if="{{canFilterMenu}}" class="menu-filter-wrap">
+        <view class="menu-filter-head">
+          <view class="menu-filter-title">
+            <van-icon name="filter-o" size="28rpx" color="#C87E40" />
+            <text>{{menuFilterLabel}}</text>
+          </view>
+          <view class="menu-filter-btn" bindtap="showMenuFilterPicker">
+            <text>切换菜单</text>
+            <van-icon name="arrow-down" size="22rpx" color="#C87E40" />
+          </view>
+        </view>
+        <scroll-view scroll-x class="menu-filter-scroll" enable-flex show-scrollbar="{{false}}">
+          <view
+            class="menu-filter-chip {{menuFilterMemberId === item.id ? 'active' : ''}}"
+            wx:for="{{menuFilterOptions}}"
+            wx:key="id"
+            data-id="{{item.id}}"
+            bindtap="onMenuFilterTap"
+          >
+            {{item.label}}
+          </view>
+        </scroll-view>
       </view>
-      <view class="grid">
-        <view
-          class="grid-cell"
-          wx:for="{{dishes}}"
-          wx:key="id"
-          style="animation-delay: {{index * 60}}ms"
-        >
-          <view class="dish-card">
-            <view class="dish-img-wrap">
-              <image
-                class="dish-img"
-                src="{{item.imageUrl || '/images/default.png'}}"
-                mode="aspectFill"
-                binderror="onImgError"
-                lazy-load
-              ></image>
-              <view class="dish-gradient"></view>
-              <view class="dish-name-overlay">
-                <view class="dish-name-text">{{item.name}}</view>
-                <view wx:if="{{item.description}}" class="dish-desc-text">{{item.description}}</view>
-              </view>
-              <view class="dish-stepper">
-                <view
-                  wx:if="{{item.cartQty > 0}}"
-                  class="step-btn minus"
-                  data-id="{{item.id}}"
-                  catchtap="minusDish"
-                >−</view>
-                <text wx:if="{{item.cartQty > 0}}" class="step-qty">{{item.cartQty}}</text>
-                <view class="step-btn plus" data-dish="{{item}}" catchtap="openAddSheet">+</view>
+
+      <view wx:if="{{dishGroups.length === 0 && canFilterMenu}}" class="filter-empty-box">
+        <text class="empty-emoji">🍳</text>
+        <view class="empty-title">这位还没有上架菜品</view>
+        <view class="empty-desc">试试切换查看其他人的菜单</view>
+        <view class="btn-secondary mt32" bindtap="showMenuFilterPicker">切换菜单</view>
+      </view>
+
+      <block wx:else>
+        <block wx:for="{{dishGroups}}" wx:key="memberId" wx:for-item="group">
+          <view class="section-label" wx:if="{{!canFilterMenu || !menuFilterMemberId}}">
+            <view class="section-dot"></view>
+            <text>{{group.memberName}}</text>
+            <text class="section-count">{{group.dishes.length}}道</text>
+          </view>
+          <view class="grid">
+            <view
+              class="grid-cell"
+              wx:for="{{group.dishes}}"
+              wx:for-item="item"
+              wx:key="id"
+              style="animation-delay: {{index * 60}}ms"
+            >
+              <view class="dish-card">
+                <view class="dish-img-wrap">
+                  <image
+                    class="dish-img"
+                    src="{{item.imageUrl || '/images/default.png'}}"
+                    mode="aspectFill"
+                    binderror="onImgError"
+                    lazy-load
+                  ></image>
+                  <view class="dish-gradient"></view>
+                  <view class="dish-name-overlay">
+                    <view class="dish-name-text">{{item.name}}</view>
+                    <view wx:if="{{item.description}}" class="dish-desc-text">{{item.description}}</view>
+                  </view>
+                  <view class="dish-stepper">
+                    <view
+                      wx:if="{{item.cartQty > 0}}"
+                      class="step-btn minus"
+                      data-id="{{item.id}}"
+                      catchtap="minusDish"
+                    >−</view>
+                    <text wx:if="{{item.cartQty > 0}}" class="step-qty">{{item.cartQty}}</text>
+                    <view class="step-btn plus" data-dish="{{item}}" catchtap="openAddSheet">+</view>
+                  </view>
+                </view>
               </view>
             </view>
           </view>
-        </view>
-      </view>
+        </block>
+      </block>
     </view>
 
-    <!-- 底部购物车栏 -->
+    <!-- 底部本桌购物车栏 -->
     <view wx:if="{{cartCount > 0}}" class="cart-bar">
       <view class="cart-bar-left" bindtap="openCart">
         <view class="cart-icon-wrap">
           <van-icon name="shopping-cart-o" size="44rpx" color="#fff" />
           <view class="cart-badge">{{cartCount}}</view>
         </view>
-        <view class="cart-bar-text">待加菜 {{cartCount}} 道</view>
+        <view class="cart-bar-text">本桌已点 {{cartCount}} 道 · 实时同步</view>
       </view>
-      <view class="cart-bar-btn" catchtap="submitOrder">确认加菜</view>
+      <view class="cart-bar-btn view-only" catchtap="openCart">查看</view>
     </view>
 
-    <view wx:if="{{isCook && !menuEmpty}}" class="fab" bindtap="goMyDishes">
+    <view class="fab" bindtap="goMyDishes">
       <van-icon name="edit" size="36rpx" color="#fff" />
       <text class="fab-label">管理</text>
     </view>
@@ -182,12 +217,12 @@
       </view>
       <view class="add-sheet-footer">
         <view class="sheet-cancel-btn" catchtap="closeAddSheet">取消</view>
-        <view class="sheet-confirm-btn" catchtap="confirmAddSheet">加入点餐</view>
+        <view class="sheet-confirm-btn" catchtap="confirmAddSheet">{{cartUpdating ? '加入中...' : '加入本桌'}}</view>
       </view>
     </view>
   </van-popup>
 
-  <!-- 购物车弹窗 -->
+  <!-- 本桌购物车（全员实时同步） -->
   <van-popup
     show="{{cartShow}}"
     position="bottom"
@@ -197,39 +232,64 @@
   >
     <view class="cart-popup">
       <view class="cart-popup-header">
-        <text class="cart-popup-title">我的点餐</text>
-        <text class="cart-popup-clear" bindtap="clearCart">清空</text>
+        <text class="cart-popup-title">本桌购物车</text>
+        <text class="cart-popup-hint">实时同步 · 共 {{cartCount}} 道</text>
       </view>
       <scroll-view scroll-y class="cart-popup-list">
-        <view class="cart-item" wx:for="{{cartItems}}" wx:key="dishId">
+        <view class="cart-item" wx:for="{{cartItems}}" wx:key="id">
           <image class="cart-item-img" src="{{item.imageUrl || '/images/default.png'}}" mode="aspectFill"></image>
           <view class="cart-item-info">
             <view class="cart-item-row1">
               <view class="cart-item-name">{{item.name}}</view>
-              <view class="cart-item-stepper">
-                <view class="step-btn minus" data-id="{{item.dishId}}" catchtap="minusCartItem">−</view>
+              <view class="cart-item-stepper" wx:if="{{item.isMine}}">
+                <view class="step-btn minus" data-id="{{item.id}}" data-dish-id="{{item.dishId}}" catchtap="minusCartItem">−</view>
                 <text class="step-qty">{{item.quantity}}</text>
-                <view class="step-btn plus" data-id="{{item.dishId}}" catchtap="plusCartItem">+</view>
+                <view class="step-btn plus" data-dish-id="{{item.dishId}}" catchtap="plusCartItem">+</view>
               </view>
+              <text wx:else class="cart-item-qty-only">×{{item.quantity}}</text>
+            </view>
+            <view class="cart-item-meta">
+              <text class="cart-item-user">{{item.userName}} 点的</text>
+              <text wx:if="{{item.cookName}}" class="cart-item-cook">· {{item.cookName}} 做</text>
             </view>
             <view
+              wx:if="{{item.isMine}}"
               class="cart-item-note {{item.note ? 'has-note' : ''}}"
-              data-id="{{item.dishId}}"
+              data-id="{{item.id}}"
               data-note="{{item.note}}"
               catchtap="openNoteEdit"
             >
               <van-icon name="edit" size="22rpx" color="{{item.note ? '#C87E40' : '#bbb'}}" />
               <text>{{item.note || '添加备注'}}</text>
             </view>
+            <view wx:elif="{{item.note}}" class="cart-item-note has-note readonly">
+              <text>📝 {{item.note}}</text>
+            </view>
           </view>
         </view>
       </scroll-view>
-      <view class="cart-submit-row">
-        <view class="cart-submit-info">共 {{cartCount}} 道菜</view>
-        <view class="cart-submit-btn {{submitting ? 'disabled' : ''}}" catchtap="submitOrder">
-          {{submitting ? '加菜中...' : '确认加菜'}}
-        </view>
-      </view>
     </view>
   </van-popup>
+
+  <!-- 备注编辑 -->
+  <van-dialog
+    use-slot
+    title="菜品备注"
+    show="{{noteEditShow}}"
+    show-cancel-button
+    confirm-button-text="保存"
+    bind:close="closeNoteEdit"
+    bind:confirm="confirmNoteEdit"
+  >
+    <view class="note-dialog-body">
+      <textarea
+        class="note-dialog-input"
+        placeholder="口味、忌口、特殊要求"
+        maxlength="50"
+        value="{{noteEditValue}}"
+        bindinput="onNoteInput"
+        auto-height
+      />
+    </view>
+  </van-dialog>
 </view>

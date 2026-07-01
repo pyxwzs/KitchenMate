@@ -1,7 +1,10 @@
+from typing import Literal
+
 from pydantic import BaseModel, Field
 
-from app.models.family import FamilyRole
 from app.schemas.common import ORMBase
+
+FamilyRolePublic = Literal["admin", "member"]
 
 
 class CreateFamilyRequest(BaseModel):
@@ -13,7 +16,7 @@ class JoinFamilyRequest(BaseModel):
 
 
 class UpdateMemberRoleRequest(BaseModel):
-    role: FamilyRole
+    role: FamilyRolePublic
 
 
 class MemberUserResponse(ORMBase):
@@ -26,7 +29,8 @@ class MemberUserResponse(ORMBase):
 class FamilyMemberResponse(ORMBase):
     id: int
     user_id: int
-    role: FamilyRole
+    role: FamilyRolePublic
+    is_owner: bool = False
     user: MemberUserResponse
 
 
@@ -35,7 +39,8 @@ class FamilyResponse(ORMBase):
     name: str
     invite_code: str
     created_by: int
-    my_role: FamilyRole | None = None
+    my_role: FamilyRolePublic | None = None
+    my_is_owner: bool = False
     member_count: int = 0
 
 
@@ -45,6 +50,8 @@ from app.schemas.menu import CookInfo
 class FamilyDetailResponse(FamilyResponse):
     members: list[FamilyMemberResponse] = []
     cook: CookInfo | None = None
+    cooks: list[CookInfo] = []
+    menu_members: list[CookInfo] = []
 
 
 class InviteInfoResponse(BaseModel):

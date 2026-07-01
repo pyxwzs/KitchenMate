@@ -9,8 +9,12 @@ class AppException(HTTPException):
         )
 
 
-def not_found(resource: str = "Resource") -> AppException:
-    return AppException(status.HTTP_404_NOT_FOUND, f"{resource} not found", "not_found")
+def not_found(resource: str = "资源") -> AppException:
+    if any(marker in resource for marker in ("不存在", "无效", "未找到", "失败")):
+        detail = resource
+    else:
+        detail = f"{resource}不存在"
+    return AppException(status.HTTP_404_NOT_FOUND, detail, "not_found")
 
 
 def unauthorized(detail: str = "Not authenticated") -> AppException:

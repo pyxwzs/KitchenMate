@@ -1,8 +1,8 @@
-const API = require('../../utils/api')
 const { resolveAssetForDisplay } = require('../../utils/asset')
 const FAMILY = require('../../utils/family')
 const MENU = require('../../utils/menu')
 const PARTY = require('../../utils/party')
+const DIALOG = require('../../utils/dialog')
 
 Page({
   data: {
@@ -10,7 +10,7 @@ Page({
     family: null,
     roleLabels: FAMILY.ROLE_LABELS,
     isAdmin: false,
-    isCook: false,
+    isOwner: false,
     isOnlyAdmin: false,
     myUserId: null,
     shareText: '',
@@ -41,7 +41,7 @@ Page({
     if (!familyId) return
     try {
       const activeParty = await PARTY.getActiveParty(familyId)
-      if (activeParty && activeParty.status === 'active') {
+      if (activeParty && PARTY.hasJoinedParty(activeParty)) {
         PARTY.setPartyContext(activeParty)
       }
       this.setData({ activeParty: activeParty && activeParty.status === 'active' ? activeParty : null })
@@ -53,9 +53,20 @@ Page({
   async formatMember(member) {
     const user = member.user || {}
     const displayName = user.real_name || user.nickname || `用户${user.id}`
+    const roleLabel = FAMILY.displayRole(member.role, member.is_owner)
+    const manageable = FAMILY.canManageMember(
+      {
+        isAdmin: this.data.isAdmin,
+        isOwner: this.data.isOwner,
+        myUserId: this.data.myUserId,
+      },
+      member
+    )
     return {
       ...member,
       displayName,
+      roleLabel,
+      manageable,
       avatarUrl: await resolveAssetForDisplay(user.avatar_url),
     }
   },
@@ -64,36 +75,39 @@ Page({
     const { familyId } = this.data
     try {
       const family = await FAMILY.getFamilyDetail(familyId)
+      const isAdmin = family.my_role === 'admin'
+      const isOwner = !!family.my_is_owner
+      const adminCount = (family.members || []).filter(m => m.role === 'admin').length
+      const isOnlyAdmin = isAdmin && adminCount <= 1
+
+      this.setData({ isAdmin, isOwner, isOnlyAdmin })
+
       family.members = await Promise.all(
         (family.members || []).map(item => this.formatMember(item))
       )
-      const cookId = family.cook && family.cook.id
-      const isAdmin = family.my_role === 'admin'
-      const adminCount = (family.members || []).filter(m => m.role === 'admin').length
-      const isOnlyAdmin = isAdmin && adminCount <= 1
+      const menuMembers = family.menu_members || family.cooks || (family.cook ? [family.cook] : [])
 
       const [invite, activeParty] = await Promise.all([
         FAMILY.getInviteInfo(familyId),
         PARTY.getActiveParty(familyId).catch(() => null),
       ])
 
-      if (activeParty && activeParty.status === 'active') {
+      if (activeParty && activeParty.status === 'active' && PARTY.hasJoinedParty(activeParty)) {
         PARTY.setPartyContext(activeParty)
       }
 
       this.setData({
-        family,
+        family: {
+          ...family,
+          myRoleLabel: FAMILY.displayRole(family.my_role, isOwner),
+          menuMembers,
+          menuMembersLabel: menuMembers.map((c) => c.display_name).join('、'),
+        },
         shareText: invite.share_text,
-        isAdmin,
-        isCook: cookId === this.data.myUserId,
-        isOnlyAdmin,
-        activeParty,
+        activeParty: activeParty && activeParty.status === 'active' ? activeParty : null,
       })
     } catch (err) {
-      wx.showToast({
-        title: err.message || '加载失败',
-        icon: 'none',
-      })
+      await DIALOG.showError(err, '加载失败')
     }
   },
 
@@ -143,29 +157,33 @@ Page({
 
   onMemberTap(e) {
     const member = e.currentTarget.dataset.member
-    if (!this.data.isAdmin || member.user_id === this.data.myUserId) {
+    if (!member.manageable) {
+      if (this.data.isAdmin && member.role === 'admin' && !member.is_owner) {
+        DIALOG.showAlert('仅超级管理员可管理其他管理员')
+      }
       return
     }
 
+    const isTargetAdmin = member.role === 'admin'
+    const itemList = isTargetAdmin
+      ? ['设为成员', '移出家庭']
+      : ['设为管理员', '移出家庭']
+
     wx.showActionSheet({
-      itemList: ['设为管理员', '设为厨师', '设为食客', '移出家庭'],
+      itemList,
       itemColor: '#333333',
       success: async (res) => {
-        if (res.tapIndex === 3) {
+        if (res.tapIndex === 1) {
           this.confirmRemoveMember(member)
           return
         }
-        const roles = ['admin', 'chef', 'diner']
-        const role = roles[res.tapIndex]
+        const role = isTargetAdmin ? 'member' : 'admin'
         try {
           await FAMILY.updateMemberRole(this.data.familyId, member.id, role)
           wx.showToast({ title: '角色已更新' })
           this.loadDetail()
         } catch (err) {
-          wx.showToast({
-            title: err.message || '更新失败',
-            icon: 'none',
-          })
+          await DIALOG.showError(err, '更新失败')
         }
       },
     })
@@ -184,7 +202,7 @@ Page({
           wx.showToast({ title: '已移出' })
           this.loadDetail()
         } catch (err) {
-          wx.showToast({ title: err.message || '操作失败', icon: 'none' })
+          await DIALOG.showError(err, '操作失败')
         }
       },
     })
@@ -193,7 +211,7 @@ Page({
   leaveFamily() {
     const { family, isOnlyAdmin } = this.data
     if (isOnlyAdmin) {
-      wx.showToast({ title: '请先指定其他管理员再退出', icon: 'none' })
+      DIALOG.showAlert('你是唯一管理员，需先将其他成员设为管理员后才能退出')
       return
     }
     wx.showModal({
@@ -211,7 +229,7 @@ Page({
             wx.navigateBack({ fail: () => wx.redirectTo({ url: '/pages/family/index' }) })
           }, 500)
         } catch (err) {
-          wx.showToast({ title: err.message || '退出失败', icon: 'none' })
+          await DIALOG.showError(err, '退出失败')
         }
       },
     })
@@ -246,7 +264,7 @@ Page({
             wx.navigateBack({ fail: () => wx.redirectTo({ url: '/pages/family/index' }) })
           }, 500)
         } catch (err) {
-          wx.showToast({ title: err.message || '删除失败', icon: 'none' })
+          await DIALOG.showError(err, '删除失败')
         }
       },
     })
@@ -261,6 +279,10 @@ Page({
   },
 
   goParty() {
+    wx.navigateTo({ url: '/pages/party/index' })
+  },
+
+  goJoinParty() {
     wx.navigateTo({ url: '/pages/party/index' })
   },
 

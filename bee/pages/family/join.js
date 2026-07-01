@@ -1,15 +1,16 @@
 const FAMILY = require('../../utils/family')
-const AUTH = require('../../utils/auth')
 const SCAN = require('../../utils/scan')
 const MENU = require('../../utils/menu')
+const DIALOG = require('../../utils/dialog')
+const PROFILE_GATE = require('../../utils/profileGate')
+const JOIN_ACTIONS = require('../../utils/joinActions')
 
 Page({
   data: {
     inviteCode: '',
-    joinState: 'idle', // idle | loading | success | error
+    joinState: 'idle', // idle | loading | success
     joinTitle: '',
     joinSubtitle: '',
-    joinError: '',
   },
 
   onLoad(options) {
@@ -40,42 +41,44 @@ Page({
       this.setData({ inviteCode: code })
       this.doJoin(code, { fromScan: true })
     } catch (err) {
-      this.setData({
-        joinState: 'error',
-        joinError: err.message || '扫码失败',
-      })
+      await DIALOG.showError(err, '扫码失败')
+      this.setData({ joinState: 'idle' })
     }
   },
 
-  submitJoin() {
+  async submitJoin() {
     const inviteCode = this.data.inviteCode.trim()
     if (!inviteCode) {
-      this.setData({
-        joinState: 'error',
-        joinError: '请输入邀请码',
-      })
+      await DIALOG.showAlert('请输入邀请码')
       return
     }
     this.doJoin(inviteCode)
   },
 
-  dismissError() {
-    this.setData({ joinState: 'idle', joinError: '' })
-  },
-
-  async doJoin(inviteCode, { fromScan = false } = {}) {
+  async doJoin(inviteCode, options) {
+    options = options || {}
+    const fromScan = !!options.fromScan
     this.setData({
       joinState: 'loading',
       inviteCode,
-      joinError: '',
       joinTitle: '',
       joinSubtitle: '',
     })
 
     try {
-      await AUTH.silentLogin()
-      const family = await FAMILY.joinFamily(inviteCode)
-      MENU.setCurrentFamilyId(family.id)
+      const ready = await PROFILE_GATE.ensureProfileReady({
+        pending: {
+          type: 'family_join',
+          inviteCode,
+          fromScan: !!fromScan,
+        },
+      })
+      if (!ready.ok) {
+        this.setData({ joinState: 'idle' })
+        return
+      }
+
+      const family = await JOIN_ACTIONS.performFamilyJoin(inviteCode)
       this.setData({
         joinState: 'success',
         joinTitle: `已加入「${family.name}」`,
@@ -85,10 +88,8 @@ Page({
         wx.redirectTo({ url: `/pages/family/detail?id=${family.id}` })
       }, 1200)
     } catch (err) {
-      this.setData({
-        joinState: 'error',
-        joinError: err.message || '加入失败，请检查邀请码',
-      })
+      this.setData({ joinState: 'idle' })
+      await DIALOG.showError(err, '加入失败，请检查邀请码')
     }
   },
 })

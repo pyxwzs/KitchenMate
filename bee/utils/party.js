@@ -95,19 +95,35 @@ function isActiveParty(party) {
   return !!(party && String(party.status).toLowerCase() === 'active')
 }
 
-/** 同步服务端聚会状态，返回 active party 或 null */
+/** 是否已加入聚会（发起者或已通过聚会码加入） */
+function hasJoinedParty(party) {
+  if (!isActiveParty(party)) return false
+  return !!(party.is_host || party.is_guest)
+}
+
+function setPartyContextIfJoined(party) {
+  if (hasJoinedParty(party)) {
+    setPartyContext(party)
+    return true
+  }
+  return false
+}
+
+/** 同步服务端聚会状态，返回 active party 或 null（仅已加入时保留上下文） */
 async function syncPartyContext() {
   const cached = getPartyContext()
   try {
     const party = await getMyParty()
-    if (isActiveParty(party)) {
+    if (hasJoinedParty(party)) {
       setPartyContext(party)
       return party
     }
     clearPartyContext()
     return null
   } catch {
-    // 网络异常时保留本地聚会上下文，避免刚加入就被清掉
+    if (cached && (cached.isHost || cached.isGuest)) {
+      return partyFromCache(cached)
+    }
     return cached
   }
 }
@@ -127,8 +143,10 @@ function partyFromCache(cached) {
   }
 }
 
-function buildOrderContext(list, party, currentFamilyId, currentFamilyName) {
-  if (party) {
+function buildOrderContext(list, party, currentFamilyId, currentFamilyName, inPartyMode) {
+  const partyActive = !!(party && hasJoinedParty(party) && inPartyMode)
+
+  if (partyActive) {
     setPartyContext(party)
     return {
       party,
@@ -139,7 +157,7 @@ function buildOrderContext(list, party, currentFamilyId, currentFamilyName) {
       partyName: party.name,
       joinCode: party.join_code,
       isPartyGuest: party.is_guest && !party.is_member,
-      canSwitchFamily: party.is_member && list.length > 1,
+      canSwitchFamily: list.length > 1,
     }
   }
 
@@ -160,7 +178,7 @@ function buildOrderContext(list, party, currentFamilyId, currentFamilyName) {
   }
 
   return {
-    party: null,
+    party: party && hasJoinedParty(party) ? party : null,
     families: list,
     currentFamilyId,
     currentFamilyName,
@@ -187,41 +205,38 @@ async function resolveOrderContext(families) {
     currentFamilyId = current.id
     currentFamilyName = current.name
     MENU.setCurrentFamilyId(currentFamilyId)
+  }
 
-    try {
-      const active = await getActiveParty(currentFamilyId)
-      if (isActiveParty(active)) {
-        party = active
-      }
-    } catch {
-      // ignore
-    }
-
-    if (!party) {
-      try {
-        const mine = await getMyParty()
-        if (isActiveParty(mine) && list.some((f) => f.id === mine.family_id)) {
-          party = mine
-          currentFamilyId = party.family_id
-          currentFamilyName = party.family_name
-          MENU.setCurrentFamilyId(currentFamilyId)
-        }
-      } catch {
-        // ignore
+  try {
+    const mine = await getMyParty()
+    if (hasJoinedParty(mine)) {
+      party = mine
+      if (!list.length) {
+        currentFamilyId = party.family_id
+        currentFamilyName = party.family_name || ''
+        MENU.setCurrentFamilyId(currentFamilyId)
       }
     }
-  } else {
-    try {
-      const mine = await getMyParty()
-      if (isActiveParty(mine)) {
-        party = mine
+  } catch {
+    const cached = partyFromCache(getPartyContext())
+    if (cached && (cached.is_host || cached.is_guest)) {
+      party = cached
+      if (!list.length) {
+        currentFamilyId = cached.family_id
+        currentFamilyName = cached.family_name || ''
       }
-    } catch {
-      party = partyFromCache(getPartyContext())
+    } else {
+      clearPartyContext()
     }
   }
 
-  return buildOrderContext(list, party, currentFamilyId, currentFamilyName)
+  const inPartyMode = !!(
+    party &&
+    hasJoinedParty(party) &&
+    Number(party.family_id) === Number(currentFamilyId)
+  )
+
+  return buildOrderContext(list, party, currentFamilyId, currentFamilyName, inPartyMode)
 }
 
 module.exports = {
@@ -237,4 +252,6 @@ module.exports = {
   syncPartyContext,
   resolveOrderContext,
   downloadPartyWxacode,
+  hasJoinedParty,
+  setPartyContextIfJoined,
 }

@@ -18,32 +18,41 @@ def user_display_name(user: User) -> str:
 
 
 def get_family_cook(db: Session, family_id: int) -> User:
-    family = db.get(Family, family_id)
-    if not family:
-        raise not_found("Family")
+    """订单会话兼容字段：取第一位有菜品的成员，否则取第一位家庭成员。"""
+    from app.services.menu import get_family_menu_members
 
-    creator_member = get_member(db, family_id, family.created_by)
-    if creator_member and creator_member.role == FamilyRole.ADMIN:
-        cook = db.get(User, family.created_by)
-        if cook:
-            return cook
+    members = get_family_menu_members(db, family_id)
+    if members:
+        return members[0]
 
-    admin_member = (
+    member = (
         db.query(FamilyMember)
-        .filter(
-            FamilyMember.family_id == family_id,
-            FamilyMember.role == FamilyRole.ADMIN,
-        )
+        .filter(FamilyMember.family_id == family_id)
         .order_by(FamilyMember.id.asc())
         .first()
     )
-    if not admin_member:
-        raise bad_request("Family has no admin cook")
+    if not member:
+        raise not_found("家庭")
 
-    cook = db.get(User, admin_member.user_id)
-    if not cook:
-        raise not_found("Cook")
-    return cook
+    user = db.get(User, member.user_id)
+    if not user:
+        raise not_found("用户")
+    return user
+
+
+def serialize_menu_members(users: list[User]) -> list[dict]:
+    return [{"id": u.id, "display_name": user_display_name(u)} for u in users]
+
+
+# 兼容旧调用
+def get_family_cooks(db: Session, family_id: int) -> list[User]:
+    from app.services.menu import get_family_menu_members
+
+    return get_family_menu_members(db, family_id)
+
+
+def serialize_cooks(cooks: list[User]) -> list[dict]:
+    return serialize_menu_members(cooks)
 
 
 def generate_invite_code(length: int = 6) -> str:
@@ -71,29 +80,80 @@ def require_family_access(db: Session, family_id: int, user_id: int) -> None:
     from app.services.party import has_family_access
 
     if not has_family_access(db, family_id, user_id):
-        raise forbidden("You do not have access to this family")
+        raise forbidden("您没有权限访问该家庭")
 
 
 def require_member(db: Session, family_id: int, user_id: int) -> FamilyMember:
     member = get_member(db, family_id, user_id)
     if not member:
-        raise forbidden("You are not a member of this family")
+        raise forbidden("您不是该家庭成员")
     return member
 
 
 def require_admin(db: Session, family_id: int, user_id: int) -> FamilyMember:
     member = require_member(db, family_id, user_id)
     if member.role != FamilyRole.ADMIN:
-        raise forbidden("Admin permission required")
+        raise forbidden("需要管理员权限")
     return member
+
+
+def is_family_owner(family: Family, user_id: int) -> bool:
+    return family.created_by == user_id
+
+
+def require_owner(db: Session, family_id: int, user_id: int) -> Family:
+    family = db.get(Family, family_id)
+    if not family:
+        raise not_found("家庭")
+    if not is_family_owner(family, user_id):
+        raise forbidden("仅超级管理员可执行此操作")
+    if not get_member(db, family_id, user_id):
+        raise forbidden("您已退出该家庭，无法执行此操作")
+    return family
+
+
+def _ensure_can_manage_member(
+    db: Session,
+    family_id: int,
+    operator_id: int,
+    target: FamilyMember,
+) -> Family:
+    family = db.get(Family, family_id)
+    if not family:
+        raise not_found("家庭")
+
+    if is_family_owner(family, target.user_id):
+        raise forbidden("不能操作超级管理员")
+
+    if target.role == FamilyRole.ADMIN and not is_family_owner(family, operator_id):
+        raise forbidden("仅超级管理员可管理其他管理员")
+
+    return family
+
+
+def role_to_public(role: FamilyRole) -> str:
+    if role == FamilyRole.ADMIN:
+        return "admin"
+    return "member"
+
+
+def role_from_public(value: str) -> FamilyRole:
+    key = (value or "").strip().lower()
+    if key == "admin":
+        return FamilyRole.ADMIN
+    if key in ("member", "diner", "chef"):
+        return FamilyRole.DINER
+    raise bad_request("角色只能是管理员或成员")
 
 
 def build_family_response(family: Family, user_id: int | None, member_count: int) -> dict:
     my_role = None
+    my_is_owner = False
     if user_id is not None:
+        my_is_owner = is_family_owner(family, user_id)
         for member in family.members:
             if member.user_id == user_id:
-                my_role = member.role
+                my_role = role_to_public(member.role)
                 break
     return {
         "id": family.id,
@@ -101,6 +161,7 @@ def build_family_response(family: Family, user_id: int | None, member_count: int
         "invite_code": family.invite_code,
         "created_by": family.created_by,
         "my_role": my_role,
+        "my_is_owner": my_is_owner,
         "member_count": member_count,
     }
 
@@ -148,7 +209,7 @@ def get_family_detail(db: Session, family_id: int, user_id: int) -> dict:
 
     family = db.get(Family, family_id)
     if not family:
-        raise not_found("Family")
+        raise not_found("家庭")
 
     members = (
         db.query(FamilyMember)
@@ -165,7 +226,8 @@ def get_family_detail(db: Session, family_id: int, user_id: int) -> dict:
             {
                 "id": member.id,
                 "user_id": member.user_id,
-                "role": member.role,
+                "role": role_to_public(member.role),
+                "is_owner": is_family_owner(family, member.user_id),
                 "user": {
                     "id": u.id,
                     "nickname": u.nickname,
@@ -179,10 +241,13 @@ def get_family_detail(db: Session, family_id: int, user_id: int) -> dict:
     data = build_family_response(family, user_id, len(members))
     data["members"] = member_items
     cook = get_family_cook(db, family_id)
+    menu_members = get_family_cooks(db, family_id)
     data["cook"] = {
         "id": cook.id,
         "display_name": user_display_name(cook),
     }
+    data["cooks"] = serialize_cooks(menu_members)
+    data["menu_members"] = serialize_menu_members(menu_members)
     return data
 
 
@@ -190,7 +255,7 @@ def get_invite_info(db: Session, family_id: int, user_id: int) -> dict:
     member = require_member(db, family_id, user_id)
     family = db.get(Family, family_id)
     if not family:
-        raise not_found("Family")
+        raise not_found("家庭")
 
     share_text = (
         f"邀请你加入「{family.name}」家庭，"
@@ -208,11 +273,11 @@ def join_family(db: Session, user: User, invite_code: str) -> Family:
     code = invite_code.strip().upper()
     family = db.query(Family).filter(Family.invite_code == code).first()
     if not family:
-        raise not_found("Invite code")
+        raise not_found("邀请码")
 
     existing = get_member(db, family.id, user.id)
     if existing:
-        raise bad_request("You are already a member of this family")
+        raise bad_request("您已是该家庭成员")
 
     member = FamilyMember(
         family_id=family.id,
@@ -230,18 +295,25 @@ def update_member_role(
     family_id: int,
     operator_id: int,
     member_id: int,
-    role: FamilyRole,
+    role: str,
 ) -> FamilyMember:
     require_admin(db, family_id, operator_id)
 
     target = db.get(FamilyMember, member_id)
     if not target or target.family_id != family_id:
-        raise not_found("Member")
+        raise not_found("成员")
 
-    if target.role == FamilyRole.ADMIN and role != FamilyRole.ADMIN:
+    family = _ensure_can_manage_member(db, family_id, operator_id, target)
+
+    parsed = role_from_public(role)
+
+    if is_family_owner(family, target.user_id) and parsed != FamilyRole.ADMIN:
+        raise forbidden("不能变更超级管理员的角色")
+
+    if target.role == FamilyRole.ADMIN and parsed != FamilyRole.ADMIN:
         _ensure_not_last_admin(db, family_id, target)
 
-    target.role = role
+    target.role = parsed
     db.commit()
     db.refresh(target)
     return target
@@ -263,7 +335,19 @@ def _ensure_not_last_admin(db: Session, family_id: int, member: FamilyMember) ->
 
 
 def leave_family(db: Session, family_id: int, user_id: int) -> None:
+    from app.models.party import Party, PartyStatus
+
     member = require_member(db, family_id, user_id)
+    if (
+        db.query(Party.id)
+        .filter(
+            Party.family_id == family_id,
+            Party.host_user_id == user_id,
+            Party.status == PartyStatus.ACTIVE,
+        )
+        .first()
+    ):
+        raise bad_request("您正在发起聚会，请先结束聚会再退出家庭")
     _ensure_not_last_admin(db, family_id, member)
     db.delete(member)
     db.commit()
@@ -274,22 +358,23 @@ def remove_member(db: Session, family_id: int, operator_id: int, member_id: int)
 
     target = db.get(FamilyMember, member_id)
     if not target or target.family_id != family_id:
-        raise not_found("Member")
+        raise not_found("成员")
 
     if target.user_id == operator_id:
         raise bad_request("请使用退出家庭功能，不能移出自己")
 
+    _ensure_can_manage_member(db, family_id, operator_id, target)
     _ensure_not_last_admin(db, family_id, target)
     db.delete(target)
     db.commit()
 
 
 def delete_family(db: Session, family_id: int, operator_id: int) -> None:
-    require_admin(db, family_id, operator_id)
+    require_owner(db, family_id, operator_id)
 
     family = db.get(Family, family_id)
     if not family:
-        raise not_found("Family")
+        raise not_found("家庭")
 
     party_ids = [
         pid for (pid,) in db.query(Party.id).filter(Party.family_id == family_id).all()
