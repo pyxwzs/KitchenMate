@@ -1,0 +1,9 @@
+{
+  "navigationBarTitleText": "懒大厨个人菜单",
+  "navigationStyle": "custom",
+  "usingComponents": {
+    "van-button": "@vant/weapp/button/index",
+    "van-loading": "@vant/weapp/loading/index",
+    "van-popup": "@vant/weapp/popup/index"
+  }
+}

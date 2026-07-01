@@ -1,0 +1,56 @@
+<view class="home-container">
+  <view class="hero">
+    <image class="logo" src="{{logoPath}}" mode="widthFix"></image>
+    <view class="app-name">{{appName}}</view>
+  </view>
+
+  <view class="user-card" wx:if="{{apiUserInfoMap}}">
+    <image class="user-avatar" src="{{ displayAvatar || '/images/who.png' }}" mode="aspectFill" binderror="onAvatarError"></image>
+    <view class="user-info">
+      <view class="user-nick">{{ nick || '微信用户' }}</view>
+      <view class="user-desc">欢迎回来，今天想吃什么？</view>
+    </view>
+  </view>
+  <view class="user-card" wx:else bindtap="goLogin">
+    <image class="user-avatar" src="/images/who.png" mode="aspectFill"></image>
+    <view class="user-info">
+      <view class="user-nick">未登录</view>
+      <view class="user-desc">点击登录后使用</view>
+    </view>
+  </view>
+
+  <view class="quick-actions">
+    <view wx:if="{{activeParty}}" class="party-active-card" bindtap="goParty">
+      <view class="party-active-left">
+        <text class="party-active-emoji">🎉</text>
+        <view>
+          <view class="party-active-title">{{activeParty.name}}</view>
+          <view class="party-active-desc">聚会进行中 · 聚会码 {{activeParty.join_code}}</view>
+        </view>
+      </view>
+      <van-icon name="arrow" size="32rpx" color="#C87E40" />
+    </view>
+
+    <view class="action-card party" bindtap="goParty">
+      <van-icon name="gift-o" size="48rpx" color="#9c27b0" />
+      <view class="action-title">聚会模式</view>
+      <view class="action-desc">发起或加入临时聚会，共享点餐</view>
+    </view>
+
+    <view class="action-card primary" bindtap="goOrder">
+      <van-icon name="shop-o" size="48rpx" color="#e64340" />
+      <view class="action-title">开始点餐</view>
+      <view class="action-desc">浏览菜单，提交订单</view>
+    </view>
+    <view class="action-card" bindtap="goFamily">
+      <van-icon name="friends-o" size="48rpx" color="#ff9800" />
+      <view class="action-title">我的家庭</view>
+      <view class="action-desc">创建或加入家庭空间</view>
+    </view>
+    <view class="action-card" bindtap="goOrders">
+      <van-icon name="orders-o" size="48rpx" color="#4caf50" />
+      <view class="action-title">我的订单</view>
+      <view class="action-desc">查看点餐记录</view>
+    </view>
+  </view>
+</view>

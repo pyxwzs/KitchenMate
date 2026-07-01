@@ -1,0 +1,173 @@
+<view class="page">
+
+  <view wx:if="{{loading}}" class="state-wrap">
+    <view class="loading-ring"></view>
+    <text>加载中...</text>
+  </view>
+
+  <view wx:elif="{{!currentFamilyId}}" class="no-family-page">
+    <view class="no-family-deco"></view>
+    <view class="no-family-card">
+      <text class="no-family-emoji">🏠</text>
+      <view class="no-family-title">还没有家庭</view>
+      <view class="no-family-desc">加入或创建一个家庭，才能查看订单；也可以输入聚会码参加临时聚会</view>
+      <view class="btn-primary" bindtap="goFamily">去我的家庭</view>
+      <view class="btn-secondary mt32" bindtap="goParty">参加聚会</view>
+    </view>
+  </view>
+
+  <view wx:else class="orders-page">
+
+    <van-sticky z-index="{{99}}">
+      <view class="top-bar" bindtap="showFamilyPicker">
+        <view class="top-bar-left">
+          <view class="cook-badge {{inPartyMode ? 'party' : ''}}">
+            <van-icon
+              name="{{inPartyMode ? 'gift-o' : 'orders-o'}}"
+              size="36rpx"
+              color="{{inPartyMode ? '#e64340' : '#D4A574'}}"
+            />
+          </view>
+          <view class="top-bar-info">
+            <view class="top-bar-family">{{inPartyMode ? partyName : currentFamilyName}}</view>
+            <view class="top-bar-cook" wx:if="{{inPartyMode}}">
+              {{isPartyGuest ? '聚会来宾 · 共享点餐' : currentFamilyName + ' · 聚会模式'}}
+            </view>
+            <view class="top-bar-cook" wx:elif="{{cookName}}">{{cookName}} 掌勺中</view>
+          </view>
+        </view>
+        <view class="top-bar-right" wx:if="{{canSwitchFamily}}">
+          <text class="top-bar-switch">切换家庭</text>
+          <van-icon name="arrow-down" size="24rpx" color="#C4A57B" />
+        </view>
+        <view class="top-bar-right party-code" wx:elif="{{inPartyMode}}" catchtap="goParty">
+          <text class="top-bar-switch">聚会码 {{joinCode}}</text>
+        </view>
+      </view>
+    </van-sticky>
+
+    <view wx:if="{{inPartyMode}}" class="party-banner" bindtap="goParty">
+      <text class="party-banner-emoji">🎉</text>
+      <view class="party-banner-text">
+        <text class="party-banner-title">聚会进行中</text>
+        <text class="party-banner-sub">来宾可同桌加菜 · 点击查看聚会详情</text>
+      </view>
+      <van-icon name="arrow" size="28rpx" color="#C87E40" />
+    </view>
+
+    <view class="tab-bar">
+      <view
+        class="tab-item {{activeTab === 'active' ? 'on' : ''}}"
+        data-tab="active"
+        bindtap="switchTab"
+      >本桌点餐</view>
+      <view
+        class="tab-item {{activeTab === 'history' ? 'on' : ''}}"
+        data-tab="history"
+        bindtap="switchTab"
+      >历史订单</view>
+    </view>
+
+    <!-- 进行中：本轮共享点餐 -->
+    <block wx:if="{{activeTab === 'active'}}">
+
+      <view wx:if="{{summary.total_dishes > 0}}" class="summary-card">
+        <view class="summary-header">
+          <view class="summary-dot"></view>
+          <text class="summary-title">本桌汇总（共 {{summary.total_dishes}} 道）</text>
+          <text class="live-tag {{wsConnected ? 'on' : 'off'}}">{{wsConnected ? '实时' : '连接中'}}</text>
+        </view>
+        <view class="summary-dishes">
+          <view class="summary-dish" wx:for="{{summary.dish_totals}}" wx:key="dish_name">
+            <image class="summary-dish-img" src="{{item.imageUrl || '/images/default.png'}}" mode="aspectFill"></image>
+            <view class="summary-dish-info">
+              <text class="summary-dish-name">{{item.dish_name}}</text>
+              <text class="summary-dish-qty">×{{item.quantity}}</text>
+            </view>
+          </view>
+        </view>
+      </view>
+
+      <view wx:if="{{summary.by_user.length > 0}}" class="section">
+        <view class="section-header">
+          <view class="section-dot"></view>
+          <text>各人点餐</text>
+        </view>
+        <view class="user-group" wx:for="{{summary.by_user}}" wx:key="user_id">
+          <view class="user-group-header">
+            <view class="user-avatar">{{item.user_name[0]}}</view>
+            <text class="user-name">{{item.user_name}}</text>
+          </view>
+          <view class="user-items">
+            <view class="user-item" wx:for="{{item.items}}" wx:for-item="dish" wx:key="id">
+              <view class="user-item-main">
+                <view class="user-item-top">
+                  <text class="user-item-name">{{dish.dish_name}}</text>
+                  <text class="user-item-qty">×{{dish.quantity}}</text>
+                </view>
+                <text wx:if="{{dish.note}}" class="user-item-note">📝 {{dish.note}}</text>
+              </view>
+            </view>
+          </view>
+        </view>
+      </view>
+
+      <view wx:if="{{summary.total_dishes > 0}}" class="submit-bar">
+        <view class="submit-hint">大家可随时加菜，点完后由一人点击提交订单</view>
+        <view class="submit-btn {{submitting ? 'disabled' : ''}}" bindtap="submitTableOrder">
+          {{submitting ? '提交中...' : '提交订单'}}
+        </view>
+      </view>
+
+      <view wx:if="{{!loading && summary.total_dishes === 0}}" class="empty-box">
+        <text class="empty-emoji">📋</text>
+        <view class="empty-title">本桌还没有点菜</view>
+        <view class="empty-desc">去点餐页选菜，确认加菜后这里会实时汇总</view>
+        <view class="btn-primary mt32" bindtap="goOrder">去点餐</view>
+      </view>
+
+    </block>
+
+    <!-- 历史订单：整单展示 -->
+    <block wx:elif="{{activeTab === 'history'}}">
+
+      <view wx:if="{{historyLoading}}" class="history-loading">
+        <view class="loading-ring small"></view>
+        <text>加载历史订单...</text>
+      </view>
+
+      <view wx:elif="{{historyOrders.length > 0}}" class="section history-section">
+        <view
+          class="history-card"
+          wx:for="{{historyOrders}}"
+          wx:key="id"
+          data-id="{{item.id}}"
+          bindtap="openHistoryDetail"
+        >
+          <view class="history-card-main">
+            <view class="history-card-left">
+              <text class="order-time">{{item.timeText}}</text>
+              <text class="history-brief">{{item.briefText}}</text>
+              <text class="history-meta">
+                共 {{item.totalDishes}} 道
+                <text wx:if="{{item.locked_by_name}}"> · {{item.locked_by_name}} 提交</text>
+              </text>
+            </view>
+            <view class="history-card-right">
+              <view class="order-status {{statusClass[item.status]}}">{{item.status_label}}</view>
+              <van-icon name="arrow" size="28rpx" color="#C4A57B" />
+            </view>
+          </view>
+        </view>
+      </view>
+
+      <view wx:else class="empty-box">
+        <text class="empty-emoji">🕐</text>
+        <view class="empty-title">暂无历史订单</view>
+        <view class="empty-desc">提交后的订单会显示在这里</view>
+      </view>
+
+    </block>
+
+  </view>
+</view>

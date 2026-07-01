@@ -1,0 +1,37 @@
+services:
+  api:
+    build: .
+    ports:
+      - "8000:8000"
+    env_file:
+      - .env
+    volumes:
+      - ./data:/app/data
+    restart: unless-stopped
+
+  # Uncomment to switch to MySQL:
+  # mysql:
+  #   image: mysql:8.0
+  #   environment:
+  #     MYSQL_ROOT_PASSWORD: rootpassword
+  #     MYSQL_DATABASE: kitchenmate
+  #     MYSQL_USER: kitchenmate
+  #     MYSQL_PASSWORD: changeme
+  #   ports:
+  #     - "3306:3306"
+  #   volumes:
+  #     - mysql_data:/var/lib/mysql
+  #   restart: unless-stopped
+  #
+  # api:
+  #   environment:
+  #     DB_DRIVER: mysql
+  #     MYSQL_HOST: mysql
+  #     MYSQL_USER: kitchenmate
+  #     MYSQL_PASSWORD: changeme
+  #     MYSQL_DATABASE: kitchenmate
+  #   depends_on:
+  #     - mysql
+
+# volumes:
+#   mysql_data:

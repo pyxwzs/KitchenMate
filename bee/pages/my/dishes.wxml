@@ -1,0 +1,64 @@
+<view class="page">
+  <view class="header-bg"></view>
+  <view class="top-card">
+    <view class="top-title">我会做的菜</view>
+    <view class="top-desc">这是你个人的拿手菜。作为家庭管理员时，家人点餐会看到这份菜单，订单也会发给你。</view>
+    <view class="top-actions">
+      <view class="top-btn primary" bindtap="showDishDialog">
+        <van-icon name="add-o" size="32rpx" color="#e64340" />
+        <text>添加菜品</text>
+      </view>
+    </view>
+  </view>
+
+  <view wx:if="{{loading}}" class="state-wrap">
+    <view class="loading-dot"></view>
+    <text>加载中...</text>
+  </view>
+
+  <view wx:elif="{{dishes.length === 0}}" class="empty-card">
+    <view class="empty-icon">🍳</view>
+    <view class="empty-title">还没有菜品</view>
+    <view class="empty-desc">添加你会做的菜，如：番茄炒蛋、红烧肉</view>
+    <van-button type="danger" round bind:click="showDishDialog">添加第一道菜</van-button>
+  </view>
+
+  <view wx:else class="dish-list">
+    <view class="dish-item" wx:for="{{dishes}}" wx:key="id">
+      <image class="dish-img" src="{{item.imageUrl || '/images/default.png'}}" mode="aspectFill" binderror="onImgError"></image>
+      <view class="dish-body">
+        <view class="dish-name">{{item.name}}</view>
+        <view class="dish-desc" wx:if="{{item.description}}">{{item.description}}</view>
+        <view class="dish-status {{item.is_active ? 'on' : 'off'}}">
+          {{item.is_active ? '已上架' : '已下架'}}
+        </view>
+      </view>
+      <view class="dish-actions">
+        <switch checked="{{item.is_active}}" color="#e64340" data-dish="{{item}}" bindchange="toggleDishActive" />
+        <text class="link" data-dish="{{item}}" bindtap="editDish">编辑</text>
+        <text class="link danger" data-id="{{item.id}}" bindtap="deleteDish">删除</text>
+      </view>
+    </view>
+  </view>
+
+  <van-dialog
+    use-slot
+    title="{{dishEditId ? '编辑菜品' : '添加菜品'}}"
+    show="{{dishDialogShow}}"
+    show-cancel-button
+    bind:close="closeDishDialog"
+    bind:confirm="confirmDish"
+  >
+    <view class="dialog-body form">
+      <view class="image-picker" bindtap="chooseDishImage">
+        <image wx:if="{{dishImagePreview}}" class="preview-img" src="{{dishImagePreview}}" mode="aspectFill"></image>
+        <view wx:else class="preview-placeholder">
+          <van-icon name="photograph" size="48rpx" color="#ccc" />
+          <text>添加菜品图片</text>
+        </view>
+      </view>
+      <input class="dialog-input" placeholder="菜名，如：番茄炒蛋" value="{{dishName}}" bindinput="onDishNameInput" />
+      <textarea class="dialog-textarea" placeholder="备注（选填）" value="{{dishDesc}}" bindinput="onDishDescInput" maxlength="200" />
+    </view>
+  </van-dialog>
+</view>

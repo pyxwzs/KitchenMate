@@ -1,0 +1,78 @@
+/* 未加入家庭空状态 + 公共按钮 */
+.no-family-page {
+  position: relative;
+  min-height: 100vh;
+  background: #F7F2EC;
+}
+
+.no-family-deco {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 420rpx;
+  background: linear-gradient(160deg, #FFD4A3 0%, #F5BA7A 100%);
+  border-radius: 0 0 80rpx 80rpx;
+}
+
+.no-family-card {
+  position: relative;
+  margin: 180rpx 40rpx 0;
+  padding: 56rpx 40rpx 48rpx;
+  background: #fff;
+  border-radius: 32rpx;
+  box-shadow: 0 20rpx 60rpx rgba(180, 130, 80, 0.18);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+}
+
+.no-family-emoji {
+  font-size: 80rpx;
+  line-height: 1;
+}
+
+.no-family-title {
+  margin-top: 24rpx;
+  font-size: 36rpx;
+  font-weight: 700;
+  color: #3D2817;
+}
+
+.no-family-desc {
+  margin: 16rpx 0 40rpx;
+  font-size: 26rpx;
+  color: #A08B6F;
+  line-height: 1.7;
+}
+
+.btn-primary {
+  padding: 22rpx 64rpx;
+  background: linear-gradient(135deg, #E8A060, #C87E40);
+  border-radius: 44rpx;
+  color: #fff;
+  font-size: 30rpx;
+  font-weight: 600;
+  box-shadow: 0 10rpx 30rpx rgba(200, 126, 64, 0.38);
+  letter-spacing: 2rpx;
+}
+
+.btn-primary:active {
+  opacity: 0.82;
+  transform: scale(0.97);
+}
+
+.btn-secondary {
+  padding: 22rpx 64rpx;
+  background: #fff;
+  border: 2rpx solid #E8A060;
+  border-radius: 44rpx;
+  color: #C87E40;
+  font-size: 30rpx;
+  font-weight: 600;
+}
+
+.mt32 {
+  margin-top: 32rpx;
+}

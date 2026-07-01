@@ -1,0 +1,87 @@
+<view class="page">
+  <view class="header-bg"></view>
+  <view class="header-content">
+    <view class="page-title">我的家庭</view>
+    <view class="page-desc">创建或加入家庭，一起协作点餐</view>
+  </view>
+
+  <view class="action-row">
+    <view class="action-card create" bindtap="showCreateDialog">
+      <view class="action-icon create">
+        <van-icon name="add-o" size="44rpx" color="#e64340" />
+      </view>
+      <view class="action-text">
+        <text class="action-title">创建家庭</text>
+        <text class="action-desc">新建专属空间</text>
+      </view>
+    </view>
+    <view class="action-card join" bindtap="goJoin">
+      <view class="action-icon join">
+        <van-icon name="friends-o" size="44rpx" color="#ff9800" />
+      </view>
+      <view class="action-text">
+        <text class="action-title">加入家庭</text>
+        <text class="action-desc">输入邀请码</text>
+      </view>
+    </view>
+  </view>
+
+  <view wx:if="{{loading}}" class="state-wrap">
+    <view class="loading-dot"></view>
+    <text class="state-text">加载中...</text>
+  </view>
+
+  <view wx:elif="{{families.length === 0}}" class="empty-card">
+    <view class="empty-icon">🏠</view>
+    <view class="empty-title">还没有家庭</view>
+    <view class="empty-desc">创建第一个家庭，邀请家人一起点餐吧</view>
+    <van-button type="danger" round bind:click="showCreateDialog">立即创建</van-button>
+  </view>
+
+  <view wx:else class="section">
+    <view class="section-title">
+      <view class="title-dot"></view>
+      <text>我的家庭（{{families.length}}）</text>
+    </view>
+    <view class="family-list">
+      <view
+        class="family-card"
+        wx:for="{{families}}"
+        wx:key="id"
+        data-id="{{item.id}}"
+        bindtap="goDetail"
+      >
+        <view class="family-icon">
+          <van-icon name="home-o" size="48rpx" color="#e64340" />
+        </view>
+        <view class="family-body">
+          <view class="family-name">{{item.name}}</view>
+          <view class="family-meta">
+            <view class="role-tag role-{{item.my_role}}">{{roleLabels[item.my_role] || '成员'}}</view>
+            <text class="member-count">{{item.member_count}} 位成员</text>
+          </view>
+        </view>
+        <van-icon name="arrow" size="32rpx" color="#ccc" />
+      </view>
+    </view>
+  </view>
+
+  <van-dialog
+    use-slot
+    title="创建家庭"
+    show="{{createDialogShow}}"
+    show-cancel-button
+    confirm-button-text="创建"
+    bind:close="onCreateClose"
+    bind:confirm="confirmCreate"
+  >
+    <view class="dialog-body">
+      <input
+        class="dialog-input"
+        placeholder="请输入家庭名称，如：小张家"
+        value="{{createName}}"
+        bindinput="onCreateNameInput"
+      />
+    </view>
+  </van-dialog>
+</view>

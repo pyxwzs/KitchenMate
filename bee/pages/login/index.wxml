@@ -1,0 +1,105 @@
+<view class="login-page">
+  <view class="login-bg"></view>
+
+  <view class="login-content">
+    <image class="logo" src="{{logoPath}}" mode="widthFix"></image>
+    <view class="app-name">{{appName}}</view>
+
+    <view class="login-panel">
+      <view wx:if="{{logging}}" class="loading-box">
+        <van-loading size="48rpx" color="#e64340" />
+        <text class="loading-text">正在连接微信...</text>
+      </view>
+
+      <view wx:else class="action-box">
+        <view wx:if="{{error}}" class="error-text">{{error}}</view>
+        <van-button
+          type="danger"
+          round
+          block
+          custom-class="login-btn"
+          bind:click="tryLogin"
+        >
+          微信一键登录
+        </van-button>
+        <view class="login-hint">登录成功后再完善头像与昵称</view>
+      </view>
+    </view>
+  </view>
+
+  <!-- 完善资料弹窗：须先完成微信登录 -->
+  <van-popup
+    show="{{showProfilePopup}}"
+    round
+    position="center"
+    close-on-click-overlay="{{false}}"
+    custom-class="profile-popup"
+  >
+    <view class="profile-dialog">
+      <view class="profile-title">完善个人资料</view>
+      <view class="profile-subtitle">请先完成微信登录，再选择头像并填写资料</view>
+
+      <view wx:if="{{isLoggedIn}}" class="login-ok-tag">
+        <van-icon name="success" size="28rpx" color="#52c41a" />
+        <text>微信已授权，可以上传头像</text>
+      </view>
+
+      <view class="avatar-section">
+        <view class="avatar-wrap {{isLoggedIn ? '' : 'disabled'}}">
+          <image
+            class="avatar-img"
+            src="{{ displayAvatar || '/images/who.png' }}"
+            mode="aspectFill"
+            binderror="onAvatarError"
+          ></image>
+          <button
+            wx:if="{{isLoggedIn}}"
+            class="avatar-btn-overlay"
+            open-type="chooseAvatar"
+            bind:chooseavatar="onChooseAvatar"
+          ></button>
+        </view>
+        <view class="avatar-tip {{isLoggedIn ? '' : 'muted'}}">
+          {{isLoggedIn ? '点击选择微信头像' : '请先完成微信登录'}}
+        </view>
+      </view>
+
+      <view class="form-item">
+        <view class="form-label">微信昵称</view>
+        <input
+          class="form-input"
+          type="nickname"
+          placeholder="点击输入或选择微信昵称"
+          value="{{nickname}}"
+          disabled="{{!isLoggedIn}}"
+          bindinput="onNicknameInput"
+        />
+      </view>
+
+      <view class="form-item">
+        <view class="form-label">真实姓名</view>
+        <input
+          class="form-input"
+          placeholder="请输入真实姓名，便于家人识别"
+          value="{{realName}}"
+          disabled="{{!isLoggedIn}}"
+          bindinput="onRealNameInput"
+        />
+      </view>
+
+      <view wx:if="{{profileError}}" class="error-text">{{profileError}}</view>
+
+      <van-button
+        type="danger"
+        round
+        block
+        loading="{{submitting}}"
+        disabled="{{submitting || !isLoggedIn}}"
+        custom-class="login-btn"
+        bind:click="submitProfile"
+      >
+        完成并进入
+      </van-button>
+    </view>
+  </van-popup>
+</view>

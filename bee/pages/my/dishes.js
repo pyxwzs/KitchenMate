@@ -1,0 +1,155 @@
+const MENU = require('../../utils/menu')
+
+Page({
+  data: {
+    loading: true,
+    dishes: [],
+    dishDialogShow: false,
+    dishEditId: null,
+    dishName: '',
+    dishDesc: '',
+    dishImagePreview: '',
+    dishImageTempPath: '',
+  },
+
+  onLoad() {
+    wx.setNavigationBarTitle({ title: '我会做的菜' })
+    this.loadMenu()
+  },
+
+  onShow() {
+    this.loadMenu()
+  },
+
+  async loadMenu() {
+    this.setData({ loading: true })
+    try {
+      const raw = await MENU.getMyMenu()
+      const menu = await MENU.formatMyMenuAsync(raw)
+      this.setData({
+        dishes: menu.dishes || [],
+        loading: false,
+      })
+    } catch (err) {
+      this.setData({ loading: false })
+      wx.showToast({ title: err.message || '加载失败', icon: 'none' })
+    }
+  },
+
+  showDishDialog() {
+    this.setData({
+      dishDialogShow: true,
+      dishEditId: null,
+      dishName: '',
+      dishDesc: '',
+      dishImagePreview: '',
+      dishImageTempPath: '',
+    })
+  },
+
+  editDish(e) {
+    const dish = e.currentTarget.dataset.dish
+    this.setData({
+      dishDialogShow: true,
+      dishEditId: dish.id,
+      dishName: dish.name,
+      dishDesc: dish.description || '',
+      dishImagePreview: dish.imageUrl || '',
+      dishImageTempPath: '',
+    })
+  },
+
+  closeDishDialog() {
+    this.setData({ dishDialogShow: false })
+  },
+
+  chooseDishImage() {
+    wx.chooseMedia({
+      count: 1,
+      mediaType: ['image'],
+      sourceType: ['album', 'camera'],
+      success: (res) => {
+        const file = res.tempFiles[0]
+        this.setData({
+          dishImagePreview: file.tempFilePath,
+          dishImageTempPath: file.tempFilePath,
+        })
+      },
+    })
+  },
+
+  onDishNameInput(e) {
+    this.setData({ dishName: e.detail.value })
+  },
+
+  onDishDescInput(e) {
+    this.setData({ dishDesc: e.detail.value })
+  },
+
+  async confirmDish() {
+    const { dishEditId, dishName, dishDesc, dishImageTempPath } = this.data
+    const name = dishName.trim()
+    if (!name) {
+      wx.showToast({ title: '请输入菜名', icon: 'none' })
+      return
+    }
+    const payload = {
+      name,
+      description: dishDesc.trim() || null,
+      is_active: true,
+    }
+    try {
+      wx.showLoading({ title: '保存中...', mask: true })
+      let dish
+      if (dishEditId) {
+        dish = await MENU.updateDish(dishEditId, payload)
+      } else {
+        dish = await MENU.createDish(payload)
+      }
+      if (dishImageTempPath) {
+        await MENU.uploadDishImage(dish.id, dishImageTempPath)
+      }
+      wx.hideLoading()
+      this.setData({ dishDialogShow: false })
+      wx.showToast({ title: '已保存' })
+      this.loadMenu()
+    } catch (err) {
+      wx.hideLoading()
+      wx.showToast({ title: err.message || '保存失败', icon: 'none' })
+    }
+  },
+
+  async toggleDishActive(e) {
+    const dish = e.currentTarget.dataset.dish
+    const isActive = e.detail.value
+    try {
+      await MENU.updateDish(dish.id, { is_active: isActive })
+      this.loadMenu()
+    } catch (err) {
+      wx.showToast({ title: err.message || '更新失败', icon: 'none' })
+      this.loadMenu()
+    }
+  },
+
+  onImgError(e) {
+    // 图片加载失败时不做处理，占位图已在 wxml 中用 || 设置
+  },
+
+  deleteDish(e) {
+    const dishId = e.currentTarget.dataset.id
+    wx.showModal({
+      title: '删除菜品',
+      content: '确认删除该菜品？',
+      success: async (res) => {
+        if (!res.confirm) return
+        try {
+          await MENU.deleteDish(dishId)
+          wx.showToast({ title: '已删除' })
+          this.loadMenu()
+        } catch (err) {
+          wx.showToast({ title: err.message || '删除失败', icon: 'none' })
+        }
+      },
+    })
+  },
+})

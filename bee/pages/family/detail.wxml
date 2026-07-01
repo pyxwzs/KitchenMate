@@ -1,0 +1,156 @@
+<view class="page" wx:if="{{family}}">
+  <view class="header-bg"></view>
+
+  <view class="hero-card">
+    <view class="hero-top">
+      <view class="family-icon">
+        <van-icon name="home-o" size="56rpx" color="#e64340" />
+      </view>
+      <view class="hero-info">
+        <view class="family-name">{{family.name}}</view>
+        <view class="hero-meta">
+          <view class="role-tag role-{{family.my_role}}">{{roleLabels[family.my_role]}}</view>
+          <text class="member-total">{{family.members.length}} 位成员</text>
+        </view>
+        <view class="cook-line" wx:if="{{family.cook}}">
+          <van-icon name="fire-o" size="28rpx" color="#e64340" />
+          <text>{{family.cook.display_name}} 掌勺</text>
+        </view>
+      </view>
+    </view>
+
+    <view class="invite-card">
+      <view class="invite-header">
+        <van-icon name="gift-o" size="36rpx" color="#e64340" />
+        <text class="invite-title">邀请家人加入</text>
+      </view>
+      <view class="invite-code-wrap">
+        <text class="invite-code">{{family.invite_code}}</text>
+      </view>
+      <view class="invite-tip">分享邀请码，家人输入即可加入</view>
+      <view class="invite-actions">
+        <view class="invite-btn qr" bindtap="showQrCode">
+          <van-icon name="scan" size="32rpx" color="#C87E40" />
+          <text>二维码</text>
+        </view>
+        <view class="invite-btn primary" bindtap="copyInviteCode">
+          <van-icon name="description" size="32rpx" color="#fff" />
+          <text>复制邀请码</text>
+        </view>
+        <view class="invite-btn secondary" bindtap="copyShareText">
+          <van-icon name="chat-o" size="32rpx" color="#e64340" />
+          <text>复制文案</text>
+        </view>
+      </view>
+    </view>
+  </view>
+
+  <view wx:if="{{isAdmin}}" class="party-section">
+    <view wx:if="{{activeParty}}" class="party-card active" bindtap="goParty">
+      <view class="party-card-header">
+        <van-icon name="gift-o" size="36rpx" color="#e64340" />
+        <text class="party-card-title">聚会进行中</text>
+      </view>
+      <view class="party-card-name">{{activeParty.name}}</view>
+      <view class="party-card-code">聚会码 {{activeParty.join_code}} · {{activeParty.guest_count}} 位来宾</view>
+      <view class="party-card-link">管理聚会 →</view>
+    </view>
+    <view wx:else class="party-card" bindtap="startParty">
+      <view class="party-card-header">
+        <van-icon name="add-o" size="36rpx" color="#9c27b0" />
+        <text class="party-card-title">发起聚会</text>
+      </view>
+      <view class="party-card-desc">开启临时聚会模式，来宾输入聚会码即可同桌点餐</view>
+    </view>
+  </view>
+
+  <view class="quick-row" wx:if="{{family}}">
+    <view class="quick-btn primary" bindtap="goOrder">
+      <van-icon name="shop-o" size="36rpx" color="#fff" />
+      <text>开始点餐</text>
+    </view>
+    <view class="quick-btn" wx:if="{{isCook}}" bindtap="goMyDishes">
+      <van-icon name="setting-o" size="36rpx" color="#e64340" />
+      <text>我会做的菜</text>
+    </view>
+  </view>
+
+  <view class="section">
+    <view class="section-title">
+      <view class="title-dot"></view>
+      <text>家庭成员</text>
+      <text class="section-count">{{family.members.length}} 人</text>
+    </view>
+
+    <view class="member-list">
+      <view
+        class="member-item {{isAdmin && item.user_id !== myUserId ? 'tappable' : ''}}"
+        wx:for="{{family.members}}"
+        wx:key="id"
+        bindtap="onMemberTap"
+        data-member="{{item}}"
+      >
+        <image class="member-avatar" src="{{item.avatarUrl || '/images/default.png'}}" mode="aspectFill"></image>
+        <view class="member-info">
+          <view class="member-name">
+            {{item.displayName}}
+            <text wx:if="{{item.user_id === myUserId}}" class="me-tag">我</text>
+          </view>
+          <view class="role-tag role-{{item.role}}">{{roleLabels[item.role]}}</view>
+        </view>
+        <view wx:if="{{isAdmin && item.user_id !== myUserId}}" class="edit-hint">
+          <text>管理</text>
+          <van-icon name="arrow" size="28rpx" color="#ccc" />
+        </view>
+      </view>
+    </view>
+
+    <view wx:if="{{isAdmin}}" class="admin-tip">
+      <van-icon name="info-o" size="28rpx" color="#999" />
+      <text>管理员负责掌勺；点击成员可修改角色或移出家庭</text>
+    </view>
+  </view>
+
+  <view class="leave-section">
+    <view wx:if="{{isOnlyAdmin}}" class="leave-tip">
+      你是唯一管理员，需先将其他成员设为管理员后才能退出；或直接删除家庭
+    </view>
+    <view class="leave-btn {{isOnlyAdmin ? 'disabled' : ''}}" bindtap="leaveFamily">
+      退出家庭
+    </view>
+    <view wx:if="{{isAdmin}}" class="delete-btn" bindtap="deleteFamily">
+      删除家庭
+    </view>
+  </view>
+
+  <van-popup
+    show="{{qrPopupShow}}"
+    position="center"
+    round
+    bind:close="hideQrCode"
+    custom-style="padding: 48rpx 40rpx 40rpx; width: 560rpx; box-sizing: border-box;"
+  >
+    <view class="qr-popup">
+      <view class="qr-title">扫码加入家庭</view>
+      <view class="qr-name">{{family.name}}</view>
+      <view class="qr-box">
+        <image wx:if="{{qrImagePath}}" class="qr-image" src="{{qrImagePath}}" mode="aspectFit"></image>
+        <view wx:else class="qr-loading">
+          <view class="loading-ring"></view>
+          <text>生成中...</text>
+        </view>
+      </view>
+      <view class="qr-code-text">邀请码：{{family.invite_code}}</view>
+      <view wx:if="{{qrIsOfficial}}" class="qr-tip official">
+        📱 微信直接扫码即可加入家庭
+      </view>
+      <view wx:else class="qr-tip">
+        需在小程序内扫码，或手动输入邀请码
+      </view>
+      <view class="qr-actions">
+        <view class="qr-btn" bindtap="saveQrCode">保存图片</view>
+        <view class="qr-btn primary" bindtap="hideQrCode">关闭</view>
+      </view>
+    </view>
+  </van-popup>
+</view>

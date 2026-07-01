@@ -1,0 +1,57 @@
+{
+  "pages": [
+    "pages/login/index",
+    "pages/home/index",
+    "pages/index/index",
+    "pages/all-orders/index",
+    "pages/order-history-detail/index",
+    "pages/my/index",
+    "pages/family/index",
+    "pages/family/detail",
+    "pages/family/join",
+    "pages/party/index",
+    "pages/my/dishes",
+    "pages/my/feedback",
+    "pages/about/index"
+  ],
+  "window": {
+    "backgroundTextStyle": "light",
+    "navigationBarBackgroundColor": "#fff",
+    "navigationBarTitleText": "懒大厨个人菜单",
+    "navigationBarTextStyle": "black"
+  },
+  "tabBar": {
+    "color": "#6e6d6b",
+    "selectedColor": "#e64340",
+    "backgroundColor": "#fff",
+    "list": [
+      {
+        "pagePath": "pages/home/index",
+        "iconPath": "images/nav/home-off.png",
+        "selectedIconPath": "images/nav/home-on.png",
+        "text": "首页"
+      },
+      {
+        "pagePath": "pages/index/index",
+        "iconPath": "images/nav/index-off.png",
+        "selectedIconPath": "images/nav/index-on.png",
+        "text": "点餐"
+      },
+      {
+        "pagePath": "pages/all-orders/index",
+        "iconPath": "images/nav/qc-off.png",
+        "selectedIconPath": "images/nav/qc-on.png",
+        "text": "订单"
+      },
+      {
+        "pagePath": "pages/my/index",
+        "iconPath": "images/nav/my-off.png",
+        "selectedIconPath": "images/nav/my-on.png",
+        "text": "我的"
+      }
+    ]
+  },
+  "usingComponents": {},
+  "lazyCodeLoading": "requiredComponents",
+  "sitemapLocation": "sitemap.json"
+}

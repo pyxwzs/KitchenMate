@@ -1,0 +1,40 @@
+.about-page {
+  min-height: 100vh;
+  padding: 80rpx 48rpx;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  background: #fafafa;
+  box-sizing: border-box;
+}
+
+.logo {
+  width: 160rpx;
+  margin-bottom: 24rpx;
+}
+
+.app-name {
+  font-size: 40rpx;
+  font-weight: 600;
+  color: #333;
+  margin-bottom: 12rpx;
+}
+
+.version {
+  font-size: 26rpx;
+  color: #999;
+  margin-bottom: 48rpx;
+}
+
+.desc {
+  display: flex;
+  flex-direction: column;
+  gap: 24rpx;
+  font-size: 28rpx;
+  line-height: 1.8;
+  color: #666;
+}
+
+.desc text {
+  display: block;
+}

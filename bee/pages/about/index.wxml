@@ -1,0 +1,9 @@
+<view class="about-page">
+  <image class="logo" src="{{logoPath}}" mode="widthFix"></image>
+  <view class="app-name">{{appName}}</view>
+  <view class="version">版本 {{version}}</view>
+  <view class="desc">
+    <text>懒大厨个人菜单是一款面向家庭与聚餐的轻量级点餐与厨房协作小程序。</text>
+    <text>支持创建家庭空间、邀请成员、协作管理菜单与订单。</text>
+  </view>
+</view>

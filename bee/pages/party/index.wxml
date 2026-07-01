@@ -1,0 +1,145 @@
+<view class="page">
+
+  <view wx:if="{{loading}}" class="state-wrap">
+    <view class="loading-ring"></view>
+    <text>加载中...</text>
+  </view>
+
+  <!-- 聚会进行中：管理 -->
+  <view wx:elif="{{mode === 'manage' && party}}" class="content">
+    <view class="hero-card">
+      <view class="hero-badge">🎉</view>
+      <view class="hero-title">{{party.name}}</view>
+      <view class="hero-sub">{{party.family_name}} · {{party.host_name}} 发起</view>
+      <view class="status-tag active">{{party.status_label}}</view>
+    </view>
+
+    <view class="code-card">
+      <view class="code-label">聚会码（来宾扫码或输入即可加入）</view>
+      <view class="code-value">{{party.join_code}}</view>
+      <view class="code-actions">
+        <view class="code-btn qr" bindtap="showQrCode">
+          <van-icon name="scan" size="28rpx" color="#C87E40" />
+          <text>二维码</text>
+        </view>
+        <view class="code-btn primary" bindtap="copyJoinCode">复制聚会码</view>
+        <view class="code-btn" bindtap="copyShareText">复制邀请</view>
+      </view>
+    </view>
+
+    <view class="info-card">
+      <view class="info-row">
+        <text class="info-label">来宾人数</text>
+        <text class="info-value">{{party.guest_count}} 人</text>
+      </view>
+      <view class="guest-list" wx:if="{{party.guests.length > 0}}">
+        <view class="guest-chip" wx:for="{{party.guests}}" wx:key="user_id">{{item.display_name}}</view>
+      </view>
+      <view wx:else class="guest-empty">还没有来宾加入，把聚会码发给朋友吧</view>
+    </view>
+
+    <view class="action-row">
+      <view class="action-btn primary" bindtap="goOrder">去点餐</view>
+      <view class="action-btn" bindtap="goOrders">看本桌订单</view>
+    </view>
+
+    <view wx:if="{{party.is_host || party.is_member}}" class="close-btn" bindtap="closeParty">
+      {{closing ? '结束中...' : '结束聚会'}}
+    </view>
+  </view>
+
+  <!-- 未开始：发起 / 加入 -->
+  <view wx:else class="content">
+    <view class="intro-card">
+      <view class="intro-emoji">🎉</view>
+      <view class="intro-title">聚会模式</view>
+      <view class="intro-desc">朋友扫码或输入聚会码即可加入，同桌共享点餐，无需加入家庭</view>
+    </view>
+
+    <view class="hub-card" bindtap="showCreateDialog">
+      <van-icon name="add-o" size="44rpx" color="#e64340" />
+      <view class="hub-text">
+        <text class="hub-title">发起聚会</text>
+        <text class="hub-desc">创建临时点餐，生成聚会码</text>
+      </view>
+      <van-icon name="arrow" size="32rpx" color="#ccc" />
+    </view>
+
+    <view class="hub-card join">
+      <view class="join-inner">
+        <view class="join-title">加入聚会</view>
+        <view class="scan-row" bindtap="scanToJoin">
+          <van-icon name="scan" size="36rpx" color="#C87E40" />
+          <text class="scan-text">扫码加入</text>
+        </view>
+        <view class="join-divider"><text>或输入聚会码</text></view>
+        <input
+          class="join-input"
+          placeholder="输入聚会码"
+          maxlength="8"
+          value="{{joinCode}}"
+          bindinput="onJoinCodeInput"
+        />
+        <view class="join-btn {{joining ? 'disabled' : ''}}" bindtap="joinParty">
+          {{joining ? '加入中...' : '加入'}}
+        </view>
+      </view>
+    </view>
+  </view>
+
+  <van-dialog
+    use-slot
+    title="发起聚会"
+    show="{{createDialogShow}}"
+    show-cancel-button
+    confirm-button-text="创建"
+    bind:close="onCreateClose"
+    bind:confirm="confirmCreate"
+  >
+    <view class="dialog-body">
+      <view class="dialog-field" bindtap="pickCreateFamily">
+        <text class="field-label">所属家庭</text>
+        <text class="field-value">{{createFamilyName || '点击选择'}}</text>
+      </view>
+      <input
+        class="dialog-input"
+        placeholder="聚会名称，如：周六聚餐"
+        value="{{createName}}"
+        bindinput="onCreateNameInput"
+      />
+    </view>
+  </van-dialog>
+
+  <!-- 二维码弹窗 -->
+  <van-popup
+    show="{{qrPopupShow}}"
+    position="center"
+    round
+    bind:close="hideQrCode"
+    custom-style="padding: 48rpx 40rpx 40rpx; width: 560rpx; box-sizing: border-box;"
+  >
+    <view class="qr-popup">
+      <view class="qr-title">扫码加入聚会</view>
+      <view class="qr-name">{{party.name}}</view>
+      <view class="qr-box">
+        <image wx:if="{{qrImagePath}}" class="qr-image" src="{{qrImagePath}}" mode="aspectFit"></image>
+        <view wx:else class="qr-loading">
+          <view class="loading-ring"></view>
+          <text>生成中...</text>
+        </view>
+      </view>
+      <view class="qr-code-text">聚会码：{{party.join_code}}</view>
+      <view wx:if="{{qrIsOfficial}}" class="qr-tip official">
+        📱 微信直接扫码即可加入聚会
+      </view>
+      <view wx:else class="qr-tip">
+        扫码后在小程序「聚会模式」中自动加入
+      </view>
+      <view class="qr-actions">
+        <view class="qr-btn" bindtap="saveQrCode">保存图片</view>
+        <view class="qr-btn primary" bindtap="hideQrCode">关闭</view>
+      </view>
+    </view>
+  </van-popup>
+
+</view>

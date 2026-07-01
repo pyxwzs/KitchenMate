@@ -1,0 +1,8 @@
+{
+  "name": "kitchenmate",
+  "version": "0.1.0",
+  "description": "懒大厨个人菜单",
+  "dependencies": {
+    "@vant/weapp": "^1.11.7"
+  }
+}
