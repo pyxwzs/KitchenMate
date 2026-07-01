@@ -1,6 +1,18 @@
 const { getAssetUrl } = require('./api')
 
 const cache = Object.create(null)
+const inflight = Object.create(null)
+
+function getCachedDisplayPath(pathOrUrl) {
+  if (!pathOrUrl) {
+    return ''
+  }
+  const url = getAssetUrl(pathOrUrl)
+  if (!url) {
+    return ''
+  }
+  return cache[url] || ''
+}
 
 function isRemoteUrl(url) {
   return !!(url && (url.startsWith('http://') || url.startsWith('https://')))
@@ -74,7 +86,10 @@ function resolveAssetForDisplay(pathOrUrl) {
   if (cache[url]) {
     return Promise.resolve(cache[url])
   }
-  return fetchViaRequest(url)
+  if (inflight[url]) {
+    return inflight[url]
+  }
+  inflight[url] = fetchViaRequest(url)
     .then((localPath) => localPath || fetchViaDownloadFile(url))
     .then((localPath) => {
       if (localPath) {
@@ -83,8 +98,13 @@ function resolveAssetForDisplay(pathOrUrl) {
       }
       return ''
     })
+    .finally(() => {
+      delete inflight[url]
+    })
+  return inflight[url]
 }
 
 module.exports = {
   resolveAssetForDisplay,
+  getCachedDisplayPath,
 }

@@ -46,7 +46,12 @@ def _serialize_item(
     return data
 
 
-def _serialize_session(order: Order, viewer_id: int, users: dict[int, User]) -> dict:
+def _serialize_session(
+    order: Order,
+    viewer_id: int,
+    users: dict[int, User],
+    dish_owners: dict[int, int] | None = None,
+) -> dict:
     locked_by = users.get(order.locked_by_user_id) if order.locked_by_user_id else None
     return {
         "id": order.id,
@@ -58,7 +63,7 @@ def _serialize_session(order: Order, viewer_id: int, users: dict[int, User]) -> 
         "locked_by_user_id": order.locked_by_user_id,
         "locked_by_name": user_display_name(locked_by) if locked_by else None,
         "locked_at": order.locked_at,
-        "items": [_serialize_item(item, users) for item in order.items],
+        "items": [_serialize_item(item, users, dish_owners) for item in order.items],
         "created_at": order.created_at,
     }
 
@@ -344,7 +349,7 @@ def _build_summary_from_session(
         "dish_totals": list(dish_totals.values()),
         "by_user": list(by_user.values()),
         "by_cook": list(by_cook.values()),
-        "session": _serialize_session(session, viewer_id, users),
+        "session": _serialize_session(session, viewer_id, users, dish_owners),
     }
 
 
@@ -387,9 +392,15 @@ def list_history_sessions(
     )
 
     user_ids: set[int] = set()
+    dish_ids: set[int] = set()
     for session in sessions:
         if session.locked_by_user_id:
             user_ids.add(session.locked_by_user_id)
         user_ids.update(item.user_id for item in session.items)
+        dish_ids.update(item.dish_id for item in session.items if item.dish_id)
+    dish_owners = _load_dish_owners(db, dish_ids)
+    user_ids.update(dish_owners.values())
     users = _load_users(db, user_ids)
-    return [_serialize_session(s, viewer_id, users) for s in sessions]
+    return [
+        _serialize_session(s, viewer_id, users, dish_owners) for s in sessions
+    ]

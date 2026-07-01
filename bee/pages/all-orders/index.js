@@ -5,6 +5,7 @@ const ORDER = require('../../utils/order')
 const ORDER_WS = require('../../utils/orderWs')
 const PARTY = require('../../utils/party')
 const DIALOG = require('../../utils/dialog')
+const DISH_IMAGE = require('../../utils/dishImageCache')
 
 Page({
   data: {
@@ -108,9 +109,11 @@ Page({
     const { currentFamilyId } = this.data
     try {
       const menuRaw = await MENU.getFamilyMenu(currentFamilyId)
-      const menuMembers = menuRaw.menu_members || menuRaw.cooks || []
+      const menu = await MENU.formatFamilyMenuAsync(menuRaw)
+      DISH_IMAGE.registerDishes(menu.dishes)
+      const menuMembers = menu.menu_members || menu.cooks || []
       this.setData({
-        menuSubtitle: MENU.buildMenuSubtitle(menuMembers, menuRaw.is_party_menu),
+        menuSubtitle: MENU.buildMenuSubtitle(menuMembers, menu.is_party_menu),
       })
     } catch (e) {
       // ignore

@@ -58,22 +58,6 @@
       <van-icon name="arrow" size="28rpx" color="#C87E40" />
     </view>
 
-    <!-- 本桌已点（共享可见，可继续加菜） -->
-    <view wx:if="{{tableTotal > 0}}" class="table-summary" bindtap="goTableOrders">
-      <view class="table-summary-row">
-        <view class="table-summary-main">
-          <text class="table-summary-title">本桌已点 {{tableTotal}} 道</text>
-          <text class="table-summary-hint">大家可继续加菜 · 查看详情</text>
-        </view>
-        <van-icon name="arrow" size="28rpx" color="#C4A57B" />
-      </view>
-      <scroll-view scroll-x class="table-summary-scroll" enable-flex>
-        <view class="table-chip" wx:for="{{tableDishes}}" wx:key="dish_name">
-          {{item.dish_name}} ×{{item.quantity}}
-        </view>
-      </scroll-view>
-    </view>
-
     <view wx:if="{{menuEmpty}}" class="empty-box">
       <text class="empty-emoji">🍽️</text>
       <view class="empty-title">还没有菜品</view>
@@ -160,8 +144,8 @@
       </block>
     </view>
 
-    <!-- 底部本桌购物车栏 -->
-    <view wx:if="{{cartCount > 0}}" class="cart-bar">
+    <!-- 底部本桌购物车栏（弹窗打开时隐藏，避免遮挡） -->
+    <view wx:if="{{cartCount > 0 && !cartShow}}" class="cart-bar">
       <view class="cart-bar-left" bindtap="openCart">
         <view class="cart-icon-wrap">
           <van-icon name="shopping-cart-o" size="44rpx" color="#fff" />
@@ -172,7 +156,7 @@
       <view class="cart-bar-btn view-only" catchtap="openCart">查看</view>
     </view>
 
-    <view class="fab" bindtap="goMyDishes">
+    <view wx:if="{{!cartShow}}" class="fab" bindtap="goMyDishes">
       <van-icon name="edit" size="36rpx" color="#fff" />
       <text class="fab-label">管理</text>
     </view>
@@ -227,15 +211,16 @@
     show="{{cartShow}}"
     position="bottom"
     round
+    z-index="{{1000}}"
     bind:close="closeCart"
-    custom-style="padding-bottom: env(safe-area-inset-bottom);"
+    custom-style="max-height: 80vh; padding-bottom: env(safe-area-inset-bottom);"
   >
     <view class="cart-popup">
       <view class="cart-popup-header">
         <text class="cart-popup-title">本桌购物车</text>
         <text class="cart-popup-hint">实时同步 · 共 {{cartCount}} 道</text>
       </view>
-      <scroll-view scroll-y class="cart-popup-list">
+      <scroll-view scroll-y class="cart-popup-list" enhanced show-scrollbar="{{false}}">
         <view class="cart-item" wx:for="{{cartItems}}" wx:key="id">
           <image class="cart-item-img" src="{{item.imageUrl || '/images/default.png'}}" mode="aspectFill"></image>
           <view class="cart-item-info">
@@ -250,7 +235,6 @@
             </view>
             <view class="cart-item-meta">
               <text class="cart-item-user">{{item.userName}} 点的</text>
-              <text wx:if="{{item.cookName}}" class="cart-item-cook">· {{item.cookName}} 做</text>
             </view>
             <view
               wx:if="{{item.isMine}}"

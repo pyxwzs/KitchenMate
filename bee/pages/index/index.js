@@ -5,6 +5,7 @@ const ORDER = require('../../utils/order')
 const ORDER_WS = require('../../utils/orderWs')
 const PARTY = require('../../utils/party')
 const DIALOG = require('../../utils/dialog')
+const DISH_IMAGE = require('../../utils/dishImageCache')
 
 Page({
   data: {
@@ -33,8 +34,6 @@ Page({
     noteEditShow: false,
     noteEditItemId: null,
     noteEditValue: '',
-    tableTotal: 0,
-    tableDishes: [],
     inPartyMode: false,
     partyName: '',
     joinCode: '',
@@ -122,8 +121,6 @@ Page({
     const cartItems = ORDER.flattenTableCartItems(summary, this.data.myUserId)
     const dishes = this.applySessionToDishes(this.data.dishes, summary)
     this.setData(Object.assign({
-      tableTotal: summary.total_dishes || 0,
-      tableDishes: summary.dish_totals || [],
       cartItems,
       cartCount: summary.total_dishes || 0,
       dishes,
@@ -166,6 +163,7 @@ Page({
     try {
       const raw = await MENU.getFamilyMenu(currentFamilyId)
       const menu = await MENU.formatFamilyMenuAsync(raw)
+      DISH_IMAGE.registerDishes(menu.dishes)
       const menuMembers = menu.menu_members || menu.cooks || []
       let dishes = menu.dishes || []
       const rawSummary = await ORDER.getOrderSummary(currentFamilyId).catch(() => null)
@@ -180,8 +178,6 @@ Page({
         menuEmpty: dishes.length === 0,
         cartItems,
         cartCount: summary.total_dishes || 0,
-        tableTotal: summary.total_dishes || 0,
-        tableDishes: summary.dish_totals || [],
         loading: false,
         menuFilterMemberId: '',
       }, this.buildMenuViewState(dishes, menuMembers, '')))
@@ -334,10 +330,6 @@ Page({
 
   closeCart() {
     this.setData({ cartShow: false })
-  },
-
-  goTableOrders() {
-    wx.switchTab({ url: '/pages/all-orders/index' })
   },
 
   goParty() {

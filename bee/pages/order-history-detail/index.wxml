@@ -17,21 +17,24 @@
     </view>
     <view class="summary-card">
       <view class="summary-dish" wx:for="{{order.dish_totals}}" wx:key="dish_name">
-        <text class="summary-dish-name">{{item.dish_name}}</text>
-        <text class="summary-dish-qty">×{{item.quantity}}</text>
+        <image class="summary-dish-img" src="{{item.imageUrl || '/images/default.png'}}" mode="aspectFill"></image>
+        <view class="summary-dish-info">
+          <text class="summary-dish-name">{{item.dish_name}}</text>
+          <text class="summary-dish-qty">×{{item.quantity}}</text>
+        </view>
       </view>
     </view>
   </view>
 
-  <view class="section">
+  <view wx:if="{{order.by_cook.length > 0}}" class="section">
     <view class="section-header">
       <view class="section-dot"></view>
-      <text>各人点餐</text>
+      <text>谁来做哪道菜</text>
     </view>
-    <view class="user-group" wx:for="{{order.by_user}}" wx:key="user_id">
+    <view class="user-group" wx:for="{{order.by_cook}}" wx:key="cook_user_id">
       <view class="user-group-header">
-        <view class="user-avatar">{{item.user_name[0]}}</view>
-        <text class="user-name">{{item.user_name}}</text>
+        <view class="user-avatar">{{item.cook_name[0]}}</view>
+        <text class="user-name">{{item.cook_name}} 做</text>
         <text class="user-total">{{item.total}} 道</text>
       </view>
       <view class="user-items">

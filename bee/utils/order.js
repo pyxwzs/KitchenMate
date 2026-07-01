@@ -1,5 +1,5 @@
 const request = require('./request')
-const { resolveAssetForDisplay } = require('./asset')
+const DISH_IMAGE = require('./dishImageCache')
 
 function addToSession(familyId, items, note) {
   return request({
@@ -77,20 +77,27 @@ function formatOrderTime(iso) {
   return `${month}月${day}日 ${hour}:${minute}`
 }
 
+async function resolveUserGroups(groups) {
+  const list = groups || []
+  const result = []
+  for (let i = 0; i < list.length; i++) {
+    const group = list[i]
+    result.push(Object.assign({}, group, {
+      items: await DISH_IMAGE.resolveItemsImages(group.items),
+    }))
+  }
+  return result
+}
+
 async function resolveSessionImages(session) {
   if (!session) {
     return session
   }
-  return enrichHistorySession({
-    ...session,
+  const items = await DISH_IMAGE.resolveItemsImages(session.items)
+  return enrichHistorySession(Object.assign({}, session, {
     timeText: formatOrderTime(session.locked_at || session.created_at),
-    items: await Promise.all(
-      (session.items || []).map(async (item) => ({
-        ...item,
-        imageUrl: await resolveAssetForDisplay(item.image_url),
-      }))
-    ),
-  })
+    items,
+  }))
 }
 
 function enrichHistorySession(session) {
@@ -98,10 +105,21 @@ function enrichHistorySession(session) {
   let totalDishes = 0
   const dishMap = {}
   const byUserMap = {}
+  const byCookMap = {}
 
   items.forEach((item) => {
     totalDishes += item.quantity
-    dishMap[item.dish_name] = (dishMap[item.dish_name] || 0) + item.quantity
+
+    if (!dishMap[item.dish_name]) {
+      dishMap[item.dish_name] = {
+        dish_id: item.dish_id,
+        dish_name: item.dish_name,
+        image_url: item.image_url,
+        imageUrl: item.imageUrl || '',
+        quantity: 0,
+      }
+    }
+    dishMap[item.dish_name].quantity += item.quantity
 
     if (!byUserMap[item.user_id]) {
       byUserMap[item.user_id] = {
@@ -113,61 +131,70 @@ function enrichHistorySession(session) {
     }
     byUserMap[item.user_id].items.push(item)
     byUserMap[item.user_id].total += item.quantity
+
+    const cookId = item.cook_user_id
+    if (cookId) {
+      if (!byCookMap[cookId]) {
+        byCookMap[cookId] = {
+          cook_user_id: cookId,
+          cook_name: item.cook_name || `用户${cookId}`,
+          items: [],
+        }
+      }
+      byCookMap[cookId].items.push(item)
+    }
+  })
+
+  Object.values(byCookMap).forEach((group) => {
+    group.total = group.items.reduce((sum, entry) => sum + entry.quantity, 0)
   })
 
   const dishNames = Object.keys(dishMap)
   const kindCount = dishNames.length
   let briefText = '暂无菜品'
   if (kindCount === 1) {
-    briefText = `${dishNames[0]} ×${dishMap[dishNames[0]]}`
+    briefText = `${dishNames[0]} ×${dishMap[dishNames[0]].quantity}`
   } else if (kindCount === 2) {
-    briefText = dishNames.map((n) => `${n} ×${dishMap[n]}`).join('、')
+    briefText = dishNames.map((n) => `${n} ×${dishMap[n].quantity}`).join('、')
   } else if (kindCount > 2) {
-    briefText = `${dishNames.slice(0, 2).map((n) => `${n} ×${dishMap[n]}`).join('、')} 等${kindCount}道菜`
+    briefText = `${dishNames.slice(0, 2).map((n) => `${n} ×${dishMap[n].quantity}`).join('、')} 等${kindCount}道菜`
   }
 
-  return {
-    ...session,
+  return Object.assign({}, session, {
     totalDishes,
     kindCount,
     briefText,
     by_user: Object.values(byUserMap),
-    dish_totals: dishNames.map((name) => ({
-      dish_name: name,
-      quantity: dishMap[name],
-    })),
-  }
+    by_cook: Object.values(byCookMap),
+    dish_totals: dishNames.map((name) => dishMap[name]),
+  })
 }
 
 async function resolveOrdersImages(sessions) {
-  return Promise.all((sessions || []).map((s) => resolveSessionImages(s)))
+  const list = sessions || []
+  const result = []
+  for (let i = 0; i < list.length; i++) {
+    result.push(await resolveSessionImages(list[i]))
+  }
+  return result
 }
 
 async function resolveSummaryImages(summary) {
   if (!summary) {
     return summary
   }
-  const dishTotals = await Promise.all(
-    (summary.dish_totals || []).map(async (item) => ({
-      ...item,
-      imageUrl: await resolveAssetForDisplay(item.image_url),
-    }))
-  )
-  const byUser = await Promise.all(
-    (summary.by_user || []).map(async (user) => ({
-      ...user,
-      items: await Promise.all(
-        (user.items || []).map(async (item) => ({
-          ...item,
-          imageUrl: await resolveAssetForDisplay(item.image_url),
-        }))
-      ),
-    }))
-  )
+  const dish_totals = await DISH_IMAGE.resolveItemsImages(summary.dish_totals)
+  const by_user = await resolveUserGroups(summary.by_user)
+  const by_cook = await resolveUserGroups(summary.by_cook)
   const session = summary.session
     ? await resolveSessionImages(summary.session)
     : null
-  return { summary, dish_totals: dishTotals, by_user: byUser, session }
+  return Object.assign({}, summary, {
+    dish_totals,
+    by_user,
+    by_cook,
+    session,
+  })
 }
 
 function getMyDishQuantities(summary, myUserId) {
@@ -200,7 +227,7 @@ function flattenTableCartItems(summary, myUserId) {
         id: item.id,
         dishId: item.dish_id,
         name: item.dish_name,
-        imageUrl: item.imageUrl,
+        imageUrl: item.imageUrl || '',
         quantity: item.quantity,
         note: item.note || '',
         userId: item.user_id,

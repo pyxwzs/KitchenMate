@@ -100,38 +100,13 @@
           </view>
           <view class="user-items">
             <view class="user-item" wx:for="{{item.items}}" wx:for-item="dish" wx:key="id">
+              <image class="user-item-img" src="{{dish.imageUrl || '/images/default.png'}}" mode="aspectFill"></image>
               <view class="user-item-main">
                 <view class="user-item-top">
                   <text class="user-item-name">{{dish.dish_name}}</text>
                   <text class="user-item-qty">×{{dish.quantity}}</text>
                 </view>
                 <text wx:if="{{dish.note}}" class="user-item-note">📝 {{dish.note}}</text>
-                <text wx:if="{{dish.cook_name}}" class="user-item-note maker">由 {{dish.cook_name}} 做</text>
-              </view>
-            </view>
-          </view>
-        </view>
-      </view>
-
-      <view wx:if="{{summary.by_user.length > 0}}" class="section">
-        <view class="section-header">
-          <view class="section-dot"></view>
-          <text>谁点了什么</text>
-        </view>
-        <view class="user-group" wx:for="{{summary.by_user}}" wx:key="user_id">
-          <view class="user-group-header">
-            <view class="user-avatar">{{item.user_name[0]}}</view>
-            <text class="user-name">{{item.user_name}}</text>
-          </view>
-          <view class="user-items">
-            <view class="user-item" wx:for="{{item.items}}" wx:for-item="dish" wx:key="id">
-              <view class="user-item-main">
-                <view class="user-item-top">
-                  <text class="user-item-name">{{dish.dish_name}}</text>
-                  <text class="user-item-qty">×{{dish.quantity}}</text>
-                </view>
-                <text wx:if="{{dish.note}}" class="user-item-note">📝 {{dish.note}}</text>
-                <text wx:if="{{dish.cook_name}}" class="user-item-note maker">由 {{dish.cook_name}} 做</text>
               </view>
             </view>
           </view>

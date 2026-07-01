@@ -248,12 +248,20 @@
 
 .user-item {
   display: flex;
-  justify-content: space-between;
+  align-items: center;
+  gap: 16rpx;
   padding: 10rpx 0;
   border-bottom: 1rpx solid #F8F2EB;
 }
 
 .user-item:last-child { border-bottom: none; }
+
+.user-item-img {
+  width: 64rpx;
+  height: 64rpx;
+  border-radius: 12rpx;
+  flex-shrink: 0;
+}
 
 .user-item-main { flex: 1; min-width: 0; }
 .user-item-top { display: flex; align-items: center; justify-content: space-between; }

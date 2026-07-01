@@ -337,12 +337,14 @@
 
 /* ── 购物车弹窗 ── */
 .cart-popup {
-  max-height: 70vh;
   display: flex;
   flex-direction: column;
+  max-height: 80vh;
+  box-sizing: border-box;
 }
 
 .cart-popup-header {
+  flex-shrink: 0;
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -362,8 +364,11 @@
 }
 
 .cart-popup-list {
-  max-height: 50vh;
-  padding: 16rpx 0;
+  flex: 1;
+  height: 60vh;
+  max-height: 60vh;
+  padding: 16rpx 0 32rpx;
+  box-sizing: border-box;
 }
 
 .cart-item {
@@ -674,11 +679,20 @@
 }
 
 .table-chip {
-  display: inline-block;
+  display: inline-flex;
+  align-items: center;
+  gap: 8rpx;
   margin-right: 12rpx;
-  padding: 6rpx 16rpx;
+  padding: 6rpx 16rpx 6rpx 8rpx;
   background: #FAF6F0;
   border-radius: 20rpx;
   font-size: 22rpx;
   color: #8B6F47;
+}
+
+.table-chip-img {
+  width: 36rpx;
+  height: 36rpx;
+  border-radius: 8rpx;
+  flex-shrink: 0;
 }
