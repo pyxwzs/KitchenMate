@@ -1,13 +1,4 @@
-.state-wrap {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  height: 100vh;
-  gap: 24rpx;
-  color: #A08B6F;
-  font-size: 26rpx;
-}
+@import "../../styles/join-flow.wxss";
 
 .loading-ring {
   width: 72rpx;

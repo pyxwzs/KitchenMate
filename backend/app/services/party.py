@@ -152,6 +152,24 @@ def start_party(db: Session, family_id: int, host_id: int, name: str) -> dict:
     return _serialize_party(db, party, host_id)
 
 
+def ensure_party_guest(db: Session, party: Party, user_id: int) -> bool:
+    """Record a party participant. Host is not counted as a guest."""
+    if party.host_user_id == user_id:
+        return False
+
+    existing = (
+        db.query(PartyGuest)
+        .filter(PartyGuest.party_id == party.id, PartyGuest.user_id == user_id)
+        .first()
+    )
+    if existing:
+        return False
+
+    db.add(PartyGuest(party_id=party.id, user_id=user_id))
+    db.commit()
+    return True
+
+
 def join_party(db: Session, user: User, join_code: str) -> dict:
     code = join_code.strip().upper()
     party = (
@@ -163,19 +181,8 @@ def join_party(db: Session, user: User, join_code: str) -> dict:
     if not party:
         raise not_found("Party code")
 
-    if get_member(db, party.family_id, user.id):
-        return _serialize_party(db, party, user.id)
-
-    existing_guest = (
-        db.query(PartyGuest)
-        .filter(PartyGuest.party_id == party.id, PartyGuest.user_id == user.id)
-        .first()
-    )
-    if not existing_guest:
-        db.add(PartyGuest(party_id=party.id, user_id=user.id))
-        db.commit()
-        party = _get_party(db, party.id)
-
+    ensure_party_guest(db, party, user.id)
+    party = _get_party(db, party.id)
     return _serialize_party(db, party, user.id)
 
 
@@ -222,7 +229,7 @@ def get_my_active_party(db: Session, user_id: int) -> dict | None:
     if hosted:
         return _serialize_party(db, hosted, user_id)
 
-    # 家庭成员：所在家庭有进行中的聚会时也应进入聚会模式
+    # 家庭成员：进入聚会模式时记录参与（便于统计人数）
     member_party = (
         db.query(Party)
         .join(FamilyMember, FamilyMember.family_id == Party.family_id)
@@ -235,6 +242,8 @@ def get_my_active_party(db: Session, user_id: int) -> dict | None:
         .first()
     )
     if member_party:
+        if ensure_party_guest(db, member_party, user_id):
+            member_party = _get_party(db, member_party.id)
         return _serialize_party(db, member_party, user_id)
 
     return None

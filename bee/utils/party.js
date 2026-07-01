@@ -62,7 +62,8 @@ function closeParty(partyId) {
 }
 
 /**
- * 下载官方小程序码图片（后端代理 WeChat API），返回本地临时路径
+ * 下载聚会二维码图片，返回 { path, isOfficial }
+ * isOfficial=true 表示微信官方小程序码，可直接用微信扫一扫
  */
 function downloadPartyWxacode(partyId) {
   const CONFIG = require('../config.js')
@@ -73,7 +74,12 @@ function downloadPartyWxacode(partyId) {
       header: { Authorization: `Bearer ${token}` },
       success(res) {
         if (res.statusCode === 200) {
-          resolve(res.tempFilePath)
+          const header = res.header || {}
+          const type = header['X-QR-Type'] || header['x-qr-type'] || ''
+          resolve({
+            path: res.tempFilePath,
+            isOfficial: String(type).toLowerCase() === 'wxacode',
+          })
         } else {
           reject(new Error(`获取小程序码失败 (${res.statusCode})`))
         }

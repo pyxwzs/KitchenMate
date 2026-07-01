@@ -52,7 +52,7 @@
         <text class="party-card-title">聚会进行中</text>
       </view>
       <view class="party-card-name">{{activeParty.name}}</view>
-      <view class="party-card-code">聚会码 {{activeParty.join_code}} · {{activeParty.guest_count}} 位来宾</view>
+      <view class="party-card-code">聚会码 {{activeParty.join_code}} · {{activeParty.guest_count}} 人参与</view>
       <view class="party-card-link">管理聚会 →</view>
     </view>
     <view wx:else class="party-card" bindtap="startParty">
@@ -142,10 +142,10 @@
       </view>
       <view class="qr-code-text">邀请码：{{family.invite_code}}</view>
       <view wx:if="{{qrIsOfficial}}" class="qr-tip official">
-        📱 微信直接扫码即可加入家庭
+        微信扫一扫，或小程序内「加入家庭 → 扫码加入」均可识别
       </view>
       <view wx:else class="qr-tip">
-        需在小程序内扫码，或手动输入邀请码
+        备用二维码，请在小程序内「加入家庭 → 扫码加入」识别
       </view>
       <view class="qr-actions">
         <view class="qr-btn" bindtap="saveQrCode">保存图片</view>

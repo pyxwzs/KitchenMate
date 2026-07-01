@@ -1,40 +1,63 @@
 <view class="page">
-  <view wx:if="{{loading}}" class="state-wrap">
-    <view class="loading-ring"></view>
-    <text>加入中...</text>
-  </view>
-
-  <block wx:else>
-  <view class="header-bg"></view>
-
-  <view class="join-card">
-    <view class="join-icon">🔑</view>
-    <view class="title">加入家庭</view>
-    <view class="subtitle">请向家庭管理员获取邀请码，输入后即可加入</view>
-
-    <view class="input-wrap">
-      <input
-        class="code-input"
-        placeholder="请输入邀请码"
-        maxlength="8"
-        value="{{inviteCode}}"
-        bindinput="onInput"
-      />
+  <view wx:if="{{joinState !== 'idle'}}" class="join-overlay">
+    <view wx:if="{{joinState === 'loading'}}" class="join-overlay-inner">
+      <view class="loading-ring"></view>
+      <text class="join-overlay-title">正在加入家庭</text>
+      <text class="join-overlay-sub">请稍候...</text>
     </view>
 
-    <van-button type="danger" round block custom-class="submit-btn" bind:click="submitJoin">
-      确认加入
-    </van-button>
+    <view wx:elif="{{joinState === 'success'}}" class="join-overlay-inner success">
+      <view class="join-check">✓</view>
+      <text class="join-overlay-title">{{joinTitle}}</text>
+      <text class="join-overlay-sub">{{joinSubtitle}}</text>
+    </view>
+
+    <view wx:elif="{{joinState === 'error'}}" class="join-overlay-inner">
+      <view class="join-overlay-emoji">😕</view>
+      <text class="join-overlay-title">未能加入</text>
+      <view class="join-overlay-error">{{joinError}}</view>
+      <view class="join-overlay-btn" bindtap="dismissError">返回重试</view>
+    </view>
   </view>
 
-  <view class="tips-card">
-    <view class="tips-title">
-      <van-icon name="info-o" size="32rpx" color="#e64340" />
-      <text>小提示</text>
+  <block wx:if="{{joinState === 'idle'}}">
+    <view class="header-bg"></view>
+
+    <view class="join-card">
+      <view class="join-icon">🔑</view>
+      <view class="title">加入家庭</view>
+      <view class="subtitle">扫码或输入邀请码，加入家人的菜单空间</view>
+
+      <view class="scan-row" bindtap="scanToJoin">
+        <van-icon name="scan" size="36rpx" color="#e64340" />
+        <text class="scan-text">扫码加入</text>
+      </view>
+
+      <view class="join-divider"><text>或输入邀请码</text></view>
+
+      <view class="input-wrap">
+        <input
+          class="code-input"
+          placeholder="请输入邀请码"
+          maxlength="8"
+          value="{{inviteCode}}"
+          bindinput="onInput"
+        />
+      </view>
+
+      <van-button type="danger" round block custom-class="submit-btn" bind:click="submitJoin">
+        确认加入
+      </van-button>
     </view>
-    <view class="tips-item">· 邀请码通常为 6 位字母或数字</view>
-    <view class="tips-item">· 加入后可查看家庭菜单并参与点餐</view>
-    <view class="tips-item">· 如需创建家庭，请返回上一页选择「创建家庭」</view>
-  </view>
+
+    <view class="tips-card">
+      <view class="tips-title">
+        <van-icon name="info-o" size="32rpx" color="#e64340" />
+        <text>小提示</text>
+      </view>
+      <view class="tips-item">· 支持扫描家庭二维码，或手动输入 6 位邀请码</view>
+      <view class="tips-item">· 加入后可查看家庭菜单并参与点餐</view>
+      <view class="tips-item">· 如需创建家庭，请返回上一页选择「创建家庭」</view>
+    </view>
   </block>
 </view>

@@ -1,6 +1,19 @@
 <view class="page">
 
-  <view wx:if="{{loading}}" class="state-wrap">
+  <view wx:if="{{joinOverlay.show}}" class="join-overlay">
+    <view wx:if="{{joinOverlay.state === 'loading'}}" class="join-overlay-inner">
+      <view class="loading-ring"></view>
+      <text class="join-overlay-title">{{joinOverlay.title}}</text>
+      <text class="join-overlay-sub">{{joinOverlay.subtitle}}</text>
+    </view>
+    <view wx:else class="join-overlay-inner success">
+      <view class="join-check">✓</view>
+      <text class="join-overlay-title">{{joinOverlay.title}}</text>
+      <text class="join-overlay-sub">{{joinOverlay.subtitle}}</text>
+    </view>
+  </view>
+
+  <view wx:if="{{loading && !joinOverlay.show}}" class="state-wrap">
     <view class="loading-ring"></view>
     <text>加载中...</text>
   </view>
@@ -29,13 +42,13 @@
 
     <view class="info-card">
       <view class="info-row">
-        <text class="info-label">来宾人数</text>
+        <text class="info-label">参与人数</text>
         <text class="info-value">{{party.guest_count}} 人</text>
       </view>
       <view class="guest-list" wx:if="{{party.guests.length > 0}}">
         <view class="guest-chip" wx:for="{{party.guests}}" wx:key="user_id">{{item.display_name}}</view>
       </view>
-      <view wx:else class="guest-empty">还没有来宾加入，把聚会码发给朋友吧</view>
+      <view wx:else class="guest-empty">还没有人加入，把聚会码发给朋友吧</view>
     </view>
 
     <view class="action-row">
@@ -130,10 +143,10 @@
       </view>
       <view class="qr-code-text">聚会码：{{party.join_code}}</view>
       <view wx:if="{{qrIsOfficial}}" class="qr-tip official">
-        📱 微信直接扫码即可加入聚会
+        微信扫一扫，或小程序内「聚会模式 → 扫码加入」均可识别
       </view>
       <view wx:else class="qr-tip">
-        扫码后在小程序「聚会模式」中自动加入
+        备用二维码，请在小程序内「聚会模式 → 扫码加入」识别
       </view>
       <view class="qr-actions">
         <view class="qr-btn" bindtap="saveQrCode">保存图片</view>

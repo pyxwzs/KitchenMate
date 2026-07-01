@@ -45,6 +45,7 @@ async def get_access_token() -> str:
 
 async def generate_wxacode(page: str, scene: str, width: int = 430) -> bytes:
     """Return raw PNG bytes of a Mini Program code for the given page and scene."""
+    settings = get_settings()
     token = await get_access_token()
     url = f"https://api.weixin.qq.com/wxa/getwxacodeunlimit?access_token={token}"
     payload = {
@@ -54,6 +55,8 @@ async def generate_wxacode(page: str, scene: str, width: int = 430) -> bytes:
         "auto_color": False,
         "line_color": {"r": 0, "g": 0, "b": 0},
         "is_hyaline": False,
+        "check_path": False,
+        "env_version": settings.wechat_env_version,
     }
     async with httpx.AsyncClient(timeout=15) as client:
         resp = await client.post(url, json=payload)

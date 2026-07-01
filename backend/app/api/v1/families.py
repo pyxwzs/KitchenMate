@@ -57,14 +57,22 @@ async def get_family_wxacode(
 
     try:
         image_bytes = await wechat_service.generate_family_wxacode(invite["invite_code"])
-        return Response(content=image_bytes, media_type="image/png")
+        return Response(
+            content=image_bytes,
+            media_type="image/png",
+            headers={"X-QR-Type": "wxacode"},
+        )
     except RuntimeError:
         pass
 
     try:
         qr_text = f"kitchenmate://family/{invite['invite_code']}"
         image_bytes = wechat_service.generate_plain_qrcode(qr_text)
-        return Response(content=image_bytes, media_type="image/png")
+        return Response(
+            content=image_bytes,
+            media_type="image/png",
+            headers={"X-QR-Type": "plain"},
+        )
     except Exception as exc:
         raise bad_request(f"QR code generation failed: {exc}") from exc
 

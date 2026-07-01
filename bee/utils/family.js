@@ -59,6 +59,12 @@ const ROLE_LABELS = {
   diner: '食客',
 }
 
+function isWxacodeResponse(header) {
+  if (!header) return false
+  const type = header['X-QR-Type'] || header['x-qr-type'] || ''
+  return String(type).toLowerCase() === 'wxacode'
+}
+
 function downloadFamilyWxacode(familyId) {
   const CONFIG = require('../config.js')
   const token = wx.getStorageSync('token')
@@ -68,7 +74,10 @@ function downloadFamilyWxacode(familyId) {
       header: { Authorization: `Bearer ${token}` },
       success(res) {
         if (res.statusCode === 200) {
-          resolve(res.tempFilePath)
+          resolve({
+            path: res.tempFilePath,
+            isOfficial: isWxacodeResponse(res.header),
+          })
         } else {
           reject(new Error(`获取小程序码失败 (${res.statusCode})`))
         }

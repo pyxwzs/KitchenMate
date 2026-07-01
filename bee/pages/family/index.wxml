@@ -21,7 +21,7 @@
       </view>
       <view class="action-text">
         <text class="action-title">加入家庭</text>
-        <text class="action-desc">输入邀请码</text>
+        <text class="action-desc">扫码或输入邀请码</text>
       </view>
     </view>
   </view>

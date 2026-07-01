@@ -30,6 +30,26 @@ Page({
     this.loadDetail()
   },
 
+  onShow() {
+    if (this.data.familyId) {
+      this.refreshActiveParty()
+    }
+  },
+
+  async refreshActiveParty() {
+    const { familyId } = this.data
+    if (!familyId) return
+    try {
+      const activeParty = await PARTY.getActiveParty(familyId)
+      if (activeParty && activeParty.status === 'active') {
+        PARTY.setPartyContext(activeParty)
+      }
+      this.setData({ activeParty: activeParty && activeParty.status === 'active' ? activeParty : null })
+    } catch {
+      // ignore polling errors
+    }
+  },
+
   async formatMember(member) {
     const user = member.user || {}
     const displayName = user.real_name || user.nickname || `用户${user.id}`
@@ -96,8 +116,8 @@ Page({
     if (!family) return
     this.setData({ qrPopupShow: true, qrImagePath: '', qrIsOfficial: false })
     try {
-      const path = await FAMILY.downloadFamilyWxacode(family.id)
-      this.setData({ qrImagePath: path, qrIsOfficial: true })
+      const { path, isOfficial } = await FAMILY.downloadFamilyWxacode(family.id)
+      this.setData({ qrImagePath: path, qrIsOfficial: isOfficial })
     } catch (_) {
       this.setData({ qrImagePath: '' })
     }

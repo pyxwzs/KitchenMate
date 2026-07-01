@@ -46,6 +46,8 @@ class Settings(BaseSettings):
     # WeChat
     wechat_app_id: str = ""
     wechat_app_secret: str = ""
+    # wxacode 打开版本：release=正式版 trial=体验版 develop=开发版
+    wechat_env_version: Literal["release", "trial", "develop"] = "trial"
 
     # CORS
     cors_origins: str = "*"

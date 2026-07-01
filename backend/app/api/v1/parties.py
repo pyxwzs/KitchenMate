@@ -64,15 +64,23 @@ async def get_party_wxacode(
     # 优先尝试官方小程序码
     try:
         image_bytes = await wechat_service.generate_party_wxacode(party.join_code)
-        return Response(content=image_bytes, media_type="image/png")
+        return Response(
+            content=image_bytes,
+            media_type="image/png",
+            headers={"X-QR-Type": "wxacode"},
+        )
     except RuntimeError:
         pass
 
-    # 回退：生成普通二维码，内容为 kitchenmate://party/<join_code>
+    # 回退：普通二维码，仅能在小程序内扫码识别
     try:
         qr_text = f"kitchenmate://party/{party.join_code}"
         image_bytes = wechat_service.generate_plain_qrcode(qr_text)
-        return Response(content=image_bytes, media_type="image/png")
+        return Response(
+            content=image_bytes,
+            media_type="image/png",
+            headers={"X-QR-Type": "plain"},
+        )
     except Exception as exc:
         raise bad_request(f"QR code generation failed: {exc}") from exc
 
