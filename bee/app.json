@@ -4,7 +4,6 @@
     "pages/home/index",
     "pages/index/index",
     "pages/all-orders/index",
-    "pages/order-history-detail/index",
     "pages/my/index",
     "pages/family/index",
     "pages/family/detail",
@@ -51,7 +50,10 @@
       }
     ]
   },
-  "usingComponents": {},
+  "usingComponents": {
+    "van-dialog": "@vant/weapp/dialog/index",
+    "van-toast": "@vant/weapp/toast/index"
+  },
   "lazyCodeLoading": "requiredComponents",
   "sitemapLocation": "sitemap.json"
 }

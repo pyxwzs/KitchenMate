@@ -143,7 +143,7 @@ Page({
 
   onChooseAvatar(e) {
     if (!this.data.isLoggedIn || !this.hasLoginToken()) {
-      wx.showToast({ title: '请先完成微信登录', icon: 'none' })
+      DIALOG.showToast('请先完成微信登录', { icon: 'none' })
       return
     }
 
@@ -202,21 +202,21 @@ Page({
     }
 
     if (!isLoggedIn || !this.hasLoginToken()) {
-      wx.showToast({ title: '请先完成微信登录', icon: 'none' })
+      DIALOG.showToast('请先完成微信登录', { icon: 'none' })
       return
     }
 
     if (!nickname.trim()) {
-      wx.showToast({ title: '请填写微信昵称', icon: 'none' })
+      DIALOG.showToast('请填写微信昵称', { icon: 'none' })
       return
     }
     if (!realName.trim()) {
-      wx.showToast({ title: '请填写真实姓名', icon: 'none' })
+      DIALOG.showToast('请填写真实姓名', { icon: 'none' })
       return
     }
     const needUploadAvatar = avatarTempPath && avatarTempPath !== '__existing__'
     if (!needUploadAvatar && !hasExistingAvatar) {
-      wx.showToast({ title: '请选择头像', icon: 'none' })
+      DIALOG.showToast('请选择头像', { icon: 'none' })
       return
     }
 

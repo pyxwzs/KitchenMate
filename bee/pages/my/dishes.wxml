@@ -43,6 +43,9 @@
 
   <van-dialog
     use-slot
+    custom-class="km-dialog"
+    theme="round-button"
+    confirm-button-color="#C87E40"
     title="{{dishEditId ? '编辑菜品' : '添加菜品'}}"
     show="{{dishDialogShow}}"
     show-cancel-button
@@ -62,3 +65,5 @@
     </view>
   </van-dialog>
 </view>
+<van-dialog id="van-dialog" custom-class="km-dialog" />
+<van-toast id="van-toast" />

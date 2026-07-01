@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Query
+from fastapi import APIRouter
 
 from app.dependencies import CurrentUser, DbSession
 from app.schemas.order import (
@@ -14,12 +14,24 @@ from app.ws.order_hub import notify_orders_updated
 router = APIRouter(prefix="/families/{family_id}/orders", tags=["orders"])
 
 
+def _empty_session(family_id: int, user_id: int) -> dict:
+    return {
+        "id": 0,
+        "family_id": family_id,
+        "cook_user_id": user_id,
+        "status": "open",
+        "status_label": "点餐中",
+        "note": None,
+        "items": [],
+        "created_at": None,
+    }
+
+
 def _serialize_for_response(db, session, viewer_id: int) -> dict:
-    user_ids = {item.user_id for item in session.items}
-    if session.locked_by_user_id:
-        user_ids.add(session.locked_by_user_id)
-    users = order_service._load_users(db, user_ids)
-    return order_service._serialize_session(session, viewer_id, users)
+    data = order_service._session_for_response(db, session, viewer_id)
+    if not data:
+        return _empty_session(session.family_id if session else 0, viewer_id)
+    return data
 
 
 @router.post("", response_model=OrderSessionResponse)
@@ -45,7 +57,7 @@ async def adjust_order_item(
     current_user: CurrentUser,
     db: DbSession,
 ) -> dict:
-    order_service.adjust_session_item(
+    session = order_service.adjust_session_item(
         db,
         family_id,
         current_user.id,
@@ -54,21 +66,8 @@ async def adjust_order_item(
         body.note,
     )
     await notify_orders_updated(family_id)
-    session = order_service._get_open_session(db, family_id)
     if not session:
-        return {
-            "id": 0,
-            "family_id": family_id,
-            "cook_user_id": current_user.id,
-            "status": "open",
-            "status_label": "点餐中",
-            "note": None,
-            "locked_by_user_id": None,
-            "locked_by_name": None,
-            "locked_at": None,
-            "items": [],
-            "created_at": None,
-        }
+        return _empty_session(family_id, current_user.id)
     return _serialize_for_response(db, session, current_user.id)
 
 
@@ -92,15 +91,15 @@ async def update_order_item(
     return _serialize_for_response(db, session, current_user.id)
 
 
-@router.post("/lock", response_model=OrderSessionResponse)
-async def lock_session(
+@router.post("/clear", response_model=OrderSessionResponse)
+async def clear_session(
     family_id: int,
     current_user: CurrentUser,
     db: DbSession,
 ) -> dict:
-    session = order_service.lock_session(db, family_id, current_user.id)
+    order_service.clear_session(db, family_id, current_user.id)
     await notify_orders_updated(family_id)
-    return _serialize_for_response(db, session, current_user.id)
+    return _empty_session(family_id, current_user.id)
 
 
 @router.get("/summary", response_model=OrderSummaryResponse)
@@ -110,13 +109,3 @@ def get_order_summary(
     db: DbSession,
 ) -> dict:
     return order_service.get_open_session_summary(db, family_id, current_user.id)
-
-
-@router.get("/history", response_model=list[OrderSessionResponse])
-def list_history_sessions(
-    family_id: int,
-    current_user: CurrentUser,
-    db: DbSession,
-    limit: int = Query(50, ge=1, le=100),
-) -> list[dict]:
-    return order_service.list_history_sessions(db, family_id, current_user.id, limit)

@@ -4,6 +4,7 @@ const API = require('utils/api')
 const { resolveAssetForDisplay } = require('utils/asset')
 const i18n = require("i18n/index")
 const { getErrorMessage, isNetworkError } = require('utils/error')
+const DIALOG = require('utils/dialog')
 
 App({
   onLaunch: function() {
@@ -23,14 +24,14 @@ App({
     const that = this
     const updateManager = wx.getUpdateManager()
     updateManager.onUpdateReady(function () {
-      wx.showModal({
+      DIALOG.showConfirm({
+        title: '更新提示',
+        content: $t.common.upgrade,
         confirmText: $t.common.confirm,
         cancelText: $t.common.cancel,
-        content: $t.common.upgrade,
-        success(res) {
-          if (res.confirm) {
-            updateManager.applyUpdate()
-          }
+      }).then((confirmed) => {
+        if (confirmed) {
+          updateManager.applyUpdate()
         }
       })
     })
@@ -38,23 +39,17 @@ App({
       success(res) {
         if (res.networkType === 'none') {
           that.globalData.isConnected = false
-          wx.showToast({
-            title: '网络异常',
-            icon: 'none',
-          })
+          DIALOG.showToast('网络异常', { icon: 'none' })
         }
       }
     })
     wx.onNetworkStatusChange(function(res) {
       if (!res.isConnected) {
         that.globalData.isConnected = false
-        wx.showToast({
-          title: '网络异常',
-          icon: 'none',
-        })
+        DIALOG.showToast('网络异常', { icon: 'none' })
       } else {
         that.globalData.isConnected = true
-        wx.hideToast()
+        DIALOG.hideToast()
       }
     })
   },
@@ -129,11 +124,7 @@ App({
       })
       .catch(err => {
         this._loginPromise = null
-        wx.showToast({
-          title: getErrorMessage(err, '登录失败'),
-          icon: 'none',
-          duration: 2500,
-        })
+        DIALOG.showToast(getErrorMessage(err, '登录失败'), { icon: 'none', duration: 2500 })
         if (!isNetworkError(err)) {
           const pages = getCurrentPages()
           const currentRoute = pages.length ? pages[pages.length - 1].route : ''

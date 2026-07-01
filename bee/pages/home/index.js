@@ -3,6 +3,7 @@ const FAMILY = require('../../utils/family')
 const FAMILY_SWITCH = require('../../utils/familySwitch')
 const MENU = require('../../utils/menu')
 const PARTY = require('../../utils/party')
+const DIALOG = require('../../utils/dialog')
 
 Page({
   data: {
@@ -62,7 +63,7 @@ Page({
           currentFamilyId: picked.id,
           currentFamilyName: picked.name,
         })
-        wx.showToast({ title: `已切换到「${picked.name}」`, icon: 'none' })
+        DIALOG.showToast(`已切换到「${picked.name}」`, { icon: 'none' })
       })
     }).catch(() => {})
   },

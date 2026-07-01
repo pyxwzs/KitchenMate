@@ -54,3 +54,5 @@
     </view>
   </block>
 </view>
+<van-dialog id="van-dialog" custom-class="km-dialog" />
+<van-toast id="van-toast" />

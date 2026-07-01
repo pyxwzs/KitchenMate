@@ -7,6 +7,81 @@ page,view,image,input {
   display: block;
   box-sizing: border-box;
 }
+
+/* ── 全局居中弹窗 / 提示 ── */
+.km-dialog-wrap.van-dialog,
+.van-dialog.km-dialog {
+  top: 50% !important;
+  left: 50% !important;
+  transform: translate3d(-50%, -50%, 0) !important;
+  width: 580rpx !important;
+  border-radius: 28rpx !important;
+  overflow: hidden;
+  box-shadow: 0 24rpx 64rpx rgba(61, 40, 23, 0.18);
+}
+
+.km-dialog-wrap .van-dialog__header,
+.van-dialog.km-dialog .van-dialog__header {
+  padding-top: 40rpx !important;
+  font-size: 34rpx !important;
+  font-weight: 700 !important;
+  color: #3D2817 !important;
+}
+
+.km-dialog-wrap .van-dialog__message,
+.van-dialog.km-dialog .van-dialog__message {
+  padding: 16rpx 40rpx 32rpx !important;
+  font-size: 28rpx !important;
+  line-height: 1.65 !important;
+  color: #666 !important;
+}
+
+.km-dialog-wrap .van-dialog__footer--round-button,
+.van-dialog.km-dialog .van-dialog__footer--round-button {
+  padding: 8rpx 32rpx 36rpx !important;
+}
+
+.km-dialog-wrap .van-dialog__confirm,
+.van-dialog.km-dialog .van-dialog__confirm,
+.km-dialog-wrap .van-goods-action-button--danger,
+.van-dialog.km-dialog .van-goods-action-button--danger {
+  background: linear-gradient(135deg, #E8A060, #C87E40) !important;
+  border: none !important;
+  color: #fff !important;
+  font-weight: 600 !important;
+}
+
+.km-dialog-wrap .van-dialog__cancel,
+.van-dialog.km-dialog .van-dialog__cancel {
+  color: #A08B6F !important;
+  font-weight: 500 !important;
+}
+
+.van-overlay {
+  background-color: rgba(40, 24, 8, 0.52) !important;
+}
+
+.van-toast__container {
+  top: 50% !important;
+  left: 50% !important;
+  transform: translate(-50%, -50%) !important;
+}
+
+.van-toast.van-toast--middle,
+.van-toast.van-toast--text,
+.van-toast.van-toast--icon {
+  max-width: 560rpx !important;
+  padding: 28rpx 40rpx !important;
+  border-radius: 24rpx !important;
+  font-size: 28rpx !important;
+  line-height: 1.5 !important;
+  background: rgba(45, 30, 18, 0.88) !important;
+  box-shadow: 0 16rpx 48rpx rgba(0, 0, 0, 0.2);
+}
+
+.van-toast--middle {
+  transform: none !important;
+}
 .badge {
   position: absolute;
   top: 0;

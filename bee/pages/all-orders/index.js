@@ -16,10 +16,8 @@ Page({
     cookName: '',
     menuSubtitle: '',
     submitting: false,
+    canCompleteMeal: false,
     wsConnected: false,
-    activeTab: 'active',
-    historyOrders: [],
-    historyLoading: false,
     summary: {
       session_id: null,
       total_dishes: 0,
@@ -27,7 +25,6 @@ Page({
       by_user: [],
       session: null,
     },
-    statusClass: ORDER.STATUS_CLASS,
     inPartyMode: false,
     partyName: '',
     joinCode: '',
@@ -57,11 +54,7 @@ Page({
       familyId,
       (msg) => {
         if (msg.type === 'orders_updated') {
-          if (this.data.activeTab === 'active') {
-            this.loadSummary(true)
-          } else {
-            this.loadHistory(true)
-          }
+          this.loadSummary(true)
         }
       },
       (connected) => {
@@ -93,12 +86,7 @@ Page({
         canSwitchFamily: ctx.canSwitchFamily,
       })
       this.connectWs(ctx.currentFamilyId)
-      await this.loadCookInfo()
-      if (this.data.activeTab === 'history') {
-        await this.loadHistory(false)
-      } else {
-        await this.loadSummary(false)
-      }
+      await Promise.all([this.loadCookInfo(), this.loadSummary(false)])
     } catch (err) {
       this.setData({ loading: false })
       await DIALOG.showError(err, '加载失败')
@@ -127,6 +115,7 @@ Page({
       const summary = await ORDER.resolveSummaryImages(raw)
       this.setData({
         summary,
+        canCompleteMeal: !!summary.can_complete_meal,
         loading: false,
       })
     } catch (err) {
@@ -134,40 +123,6 @@ Page({
         this.setData({ loading: false })
         await DIALOG.showError(err, '加载失败')
       }
-    }
-  },
-
-  async loadHistory(silent) {
-    const { currentFamilyId } = this.data
-    if (!silent) {
-      this.setData({ historyLoading: true, loading: false })
-    }
-    try {
-      const raw = await ORDER.getHistoryOrders(currentFamilyId)
-      const historyOrders = await ORDER.resolveOrdersImages(raw)
-      this.setData({
-        historyOrders,
-        historyLoading: false,
-        loading: false,
-      })
-    } catch (err) {
-      this.setData({ historyLoading: false, loading: false })
-      if (!silent) {
-        await DIALOG.showError(err, '加载失败')
-      }
-    }
-  },
-
-  switchTab(e) {
-    const tab = e.currentTarget.dataset.tab
-    if (tab === this.data.activeTab) {
-      return
-    }
-    this.setData({ activeTab: tab })
-    if (tab === 'history') {
-      this.loadHistory(false)
-    } else {
-      this.loadSummary(false)
     }
   },
 
@@ -187,41 +142,35 @@ Page({
         isPartyGuest: false,
       })
       this.connectWs(picked.id)
-      await this.loadCookInfo()
-      if (this.data.activeTab === 'history') {
-        await this.loadHistory(false)
-      } else {
-        await this.loadSummary(false)
-      }
+      await Promise.all([this.loadCookInfo(), this.loadSummary(false)])
     })
   },
 
-  submitTableOrder() {
+  async confirmMealComplete() {
     const { currentFamilyId, summary, submitting } = this.data
     if (submitting || !summary.total_dishes) {
       return
     }
 
-    wx.showModal({
-      title: '提交订单',
-      content: '提交后本桌点餐结束，掌勺开始做菜，其他人不能再加菜',
-      confirmText: '提交',
-      success: async (res) => {
-        if (!res.confirm) return
-        this.setData({ submitting: true })
-        wx.showLoading({ title: '提交中...', mask: true })
-        try {
-          await ORDER.lockSession(currentFamilyId)
-          wx.showToast({ title: '订单已提交', icon: 'success' })
-          await this.loadSummary(true)
-        } catch (err) {
-          await DIALOG.showError(err, '提交失败')
-        } finally {
-          wx.hideLoading()
-          this.setData({ submitting: false })
-        }
-      },
+    const confirmed = await DIALOG.showConfirm({
+      title: '确认出餐',
+      content: '确认后本轮点餐结束并清空本桌，大家仍可继续加菜开始新一轮',
+      confirmText: '确认',
     })
+    if (!confirmed) return
+
+    this.setData({ submitting: true })
+    wx.showLoading({ title: '确认中...', mask: true })
+    try {
+      await ORDER.clearSession(currentFamilyId)
+      DIALOG.showToast('本轮已结束', { icon: 'success' })
+      await this.loadSummary(true)
+    } catch (err) {
+      await DIALOG.showError(err, '确认失败')
+    } finally {
+      wx.hideLoading()
+      this.setData({ submitting: false })
+    }
   },
 
   goParty() {
@@ -234,17 +183,5 @@ Page({
 
   goOrder() {
     wx.switchTab({ url: '/pages/index/index' })
-  },
-
-  openHistoryDetail(e) {
-    const orderId = e.currentTarget.dataset.id
-    const order = this.data.historyOrders.find((o) => o.id === orderId)
-    if (!order) {
-      return
-    }
-    wx.setStorageSync('_history_order_detail', order)
-    wx.navigateTo({
-      url: `/pages/order-history-detail/index?id=${orderId}`,
-    })
   },
 })

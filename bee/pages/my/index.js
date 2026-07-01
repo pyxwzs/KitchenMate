@@ -1,6 +1,7 @@
 const CONFIG = require('../../config.js')
 const API = require('../../utils/api')
 const { resolveAssetForDisplay } = require('../../utils/asset')
+const DIALOG = require('../../utils/dialog')
 
 Page({
   data: {
@@ -58,31 +59,31 @@ Page({
 
   async _editNick() {
     if (!this.data.nick) {
-      wx.showToast({ title: '请输入昵称', icon: 'none' })
+      DIALOG.showToast('请输入昵称', { icon: 'none' })
       return
     }
     try {
       await API.updateProfile({ nickname: this.data.nick })
-      wx.showToast({ title: '保存成功' })
+      DIALOG.showToast('保存成功', { icon: 'success' })
       await this.loadUserInfo()
     } catch (err) {
-      wx.showToast({ title: err.message || '保存失败', icon: 'none' })
+      DIALOG.showToast(err.message || '保存失败', { icon: 'none' })
     }
   },
 
   async onChooseAvatar(e) {
     if (!wx.getStorageSync('token')) {
-      wx.showToast({ title: '请先登录', icon: 'none' })
+      DIALOG.showToast('请先登录', { icon: 'none' })
       return
     }
     const tempPath = e.detail.avatarUrl
     this.setData({ displayAvatar: tempPath })
     try {
       await API.uploadAvatar(tempPath)
-      wx.showToast({ title: '头像已更新' })
+      DIALOG.showToast('头像已更新', { icon: 'success' })
       await this.loadUserInfo()
     } catch (err) {
-      wx.showToast({ title: err.message || '上传失败', icon: 'none' })
+      DIALOG.showToast(err.message || '上传失败', { icon: 'none' })
     }
   },
 
@@ -90,16 +91,14 @@ Page({
     this.setData({ displayAvatar: '/images/default.png' })
   },
 
-  clearStorage() {
-    wx.showModal({
+  async clearStorage() {
+    const confirmed = await DIALOG.showConfirm({
       title: '提示',
       content: '确定清除缓存并重新登录吗？',
-      success(res) {
-        if (res.confirm) {
-          wx.clearStorageSync()
-          wx.reLaunch({ url: '/pages/login/index' })
-        }
-      },
+      confirmText: '确定',
     })
+    if (!confirmed) return
+    wx.clearStorageSync()
+    wx.reLaunch({ url: '/pages/login/index' })
   },
 })

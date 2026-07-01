@@ -105,6 +105,9 @@
 
 <van-dialog
   use-slot
+  custom-class="km-dialog"
+  theme="round-button"
+  confirm-button-color="#C87E40"
   title="修改昵称"
   show="{{ nickShow }}"
   show-cancel-button
@@ -118,3 +121,5 @@
     clearable
   />
 </van-dialog>
+<van-dialog id="van-dialog" custom-class="km-dialog" />
+<van-toast id="van-toast" />

@@ -52,7 +52,7 @@ Page({
         currentFamilyId: picked.id,
         currentFamilyName: picked.name,
       })
-      wx.showToast({ title: `已切换到「${picked.name}」`, icon: 'none' })
+      DIALOG.showToast(`已切换到「${picked.name}」`, { icon: 'none' })
     })
   },
 

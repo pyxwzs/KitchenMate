@@ -114,14 +114,14 @@ Page({
   copyInviteCode() {
     wx.setClipboardData({
       data: this.data.family.invite_code,
-      success: () => wx.showToast({ title: '邀请码已复制' }),
+      success: () => DIALOG.showToast('邀请码已复制', { icon: 'success' }),
     })
   },
 
   copyShareText() {
     wx.setClipboardData({
       data: this.data.shareText,
-      success: () => wx.showToast({ title: '邀请文案已复制' }),
+      success: () => DIALOG.showToast('邀请文案已复制', { icon: 'success' }),
     })
   },
 
@@ -146,10 +146,10 @@ Page({
     if (!qrImagePath) return
     wx.saveImageToPhotosAlbum({
       filePath: qrImagePath,
-      success: () => wx.showToast({ title: '已保存到相册' }),
+      success: () => DIALOG.showToast('已保存到相册', { icon: 'success' }),
       fail: (err) => {
         if (err.errMsg && err.errMsg.includes('auth')) {
-          wx.showToast({ title: '请先授权访问相册', icon: 'none' })
+          DIALOG.showToast('请先授权访问相册', { icon: 'none' })
         }
       },
     })
@@ -180,7 +180,7 @@ Page({
         const role = isTargetAdmin ? 'member' : 'admin'
         try {
           await FAMILY.updateMemberRole(this.data.familyId, member.id, role)
-          wx.showToast({ title: '角色已更新' })
+          DIALOG.showToast('角色已更新', { icon: 'success' })
           this.loadDetail()
         } catch (err) {
           await DIALOG.showError(err, '更新失败')
@@ -189,50 +189,44 @@ Page({
     })
   },
 
-  confirmRemoveMember(member) {
-    wx.showModal({
+  async confirmRemoveMember(member) {
+    const confirmed = await DIALOG.showConfirm({
       title: '移出成员',
       content: `确定将「${member.displayName}」移出家庭吗？`,
       confirmText: '移出',
-      confirmColor: '#e64340',
-      success: async (res) => {
-        if (!res.confirm) return
-        try {
-          await FAMILY.removeMember(this.data.familyId, member.id)
-          wx.showToast({ title: '已移出' })
-          this.loadDetail()
-        } catch (err) {
-          await DIALOG.showError(err, '操作失败')
-        }
-      },
     })
+    if (!confirmed) return
+    try {
+      await FAMILY.removeMember(this.data.familyId, member.id)
+      DIALOG.showToast('已移出', { icon: 'success' })
+      this.loadDetail()
+    } catch (err) {
+      await DIALOG.showError(err, '操作失败')
+    }
   },
 
-  leaveFamily() {
+  async leaveFamily() {
     const { family, isOnlyAdmin } = this.data
     if (isOnlyAdmin) {
       DIALOG.showAlert('你是唯一管理员，需先将其他成员设为管理员后才能退出')
       return
     }
-    wx.showModal({
+    const confirmed = await DIALOG.showConfirm({
       title: '退出家庭',
       content: `确定退出「${family.name}」吗？退出后将无法查看该家庭菜单和订单。`,
       confirmText: '退出',
-      confirmColor: '#e64340',
-      success: async (res) => {
-        if (!res.confirm) return
-        try {
-          await FAMILY.leaveFamily(this.data.familyId)
-          this.afterLeaveFamily()
-          wx.showToast({ title: '已退出家庭' })
-          setTimeout(() => {
-            wx.navigateBack({ fail: () => wx.redirectTo({ url: '/pages/family/index' }) })
-          }, 500)
-        } catch (err) {
-          await DIALOG.showError(err, '退出失败')
-        }
-      },
     })
+    if (!confirmed) return
+    try {
+      await FAMILY.leaveFamily(this.data.familyId)
+      this.afterLeaveFamily()
+      DIALOG.showToast('已退出家庭', { icon: 'success' })
+      setTimeout(() => {
+        wx.navigateBack({ fail: () => wx.redirectTo({ url: '/pages/family/index' }) })
+      }, 500)
+    } catch (err) {
+      await DIALOG.showError(err, '退出失败')
+    }
   },
 
   afterLeaveFamily() {
@@ -247,27 +241,24 @@ Page({
     }
   },
 
-  deleteFamily() {
+  async deleteFamily() {
     const { family } = this.data
-    wx.showModal({
+    const confirmed = await DIALOG.showConfirm({
       title: '删除家庭',
-      content: `确定删除「${family.name}」吗？所有成员、订单和聚会记录将被永久删除，此操作不可恢复。`,
+      content: `确定删除「${family.name}」吗？所有成员和聚会记录将被永久删除，此操作不可恢复。`,
       confirmText: '删除',
-      confirmColor: '#e64340',
-      success: async (res) => {
-        if (!res.confirm) return
-        try {
-          await FAMILY.deleteFamily(this.data.familyId)
-          this.afterLeaveFamily()
-          wx.showToast({ title: '家庭已删除' })
-          setTimeout(() => {
-            wx.navigateBack({ fail: () => wx.redirectTo({ url: '/pages/family/index' }) })
-          }, 500)
-        } catch (err) {
-          await DIALOG.showError(err, '删除失败')
-        }
-      },
     })
+    if (!confirmed) return
+    try {
+      await FAMILY.deleteFamily(this.data.familyId)
+      this.afterLeaveFamily()
+      DIALOG.showToast('家庭已删除', { icon: 'success' })
+      setTimeout(() => {
+        wx.navigateBack({ fail: () => wx.redirectTo({ url: '/pages/family/index' }) })
+      }, 500)
+    } catch (err) {
+      await DIALOG.showError(err, '删除失败')
+    }
   },
 
   goOrder() {

@@ -126,6 +126,8 @@
                     <view class="dish-name-text">{{item.name}}</view>
                     <view wx:if="{{item.description}}" class="dish-desc-text">{{item.description}}</view>
                   </view>
+                </view>
+                <view class="dish-footer">
                   <view class="dish-stepper">
                     <view
                       wx:if="{{item.cartQty > 0}}"
@@ -258,6 +260,9 @@
   <!-- 备注编辑 -->
   <van-dialog
     use-slot
+    custom-class="km-dialog"
+    theme="round-button"
+    confirm-button-color="#C87E40"
     title="菜品备注"
     show="{{noteEditShow}}"
     show-cancel-button
@@ -277,3 +282,5 @@
     </view>
   </van-dialog>
 </view>
+<van-dialog id="van-dialog" custom-class="km-dialog" />
+<van-toast id="van-toast" />

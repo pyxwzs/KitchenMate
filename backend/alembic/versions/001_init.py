@@ -122,74 +122,6 @@ def upgrade() -> None:
     op.create_index(op.f("ix_dishes_user_id"), "dishes", ["user_id"], unique=False)
 
     op.create_table(
-        "orders",
-        sa.Column("id", sa.Integer(), autoincrement=True, nullable=False),
-        sa.Column("family_id", sa.Integer(), nullable=False),
-        sa.Column("user_id", sa.Integer(), nullable=True),
-        sa.Column("cook_user_id", sa.Integer(), nullable=False),
-        sa.Column(
-            "status",
-            sa.Enum("open", "locked", "cancelled", name="orderstatus"),
-            nullable=False,
-            server_default="open",
-        ),
-        sa.Column("note", sa.String(length=200), nullable=True),
-        sa.Column("locked_by_user_id", sa.Integer(), nullable=True),
-        sa.Column("locked_at", sa.DateTime(timezone=True), nullable=True),
-        sa.Column(
-            "created_at",
-            sa.DateTime(timezone=True),
-            server_default=sa.text("(CURRENT_TIMESTAMP)"),
-            nullable=False,
-        ),
-        sa.Column(
-            "updated_at",
-            sa.DateTime(timezone=True),
-            server_default=sa.text("(CURRENT_TIMESTAMP)"),
-            nullable=False,
-        ),
-        sa.ForeignKeyConstraint(["cook_user_id"], ["users.id"]),
-        sa.ForeignKeyConstraint(["family_id"], ["families.id"]),
-        sa.ForeignKeyConstraint(["locked_by_user_id"], ["users.id"]),
-        sa.ForeignKeyConstraint(["user_id"], ["users.id"]),
-        sa.PrimaryKeyConstraint("id"),
-    )
-    op.create_index(op.f("ix_orders_cook_user_id"), "orders", ["cook_user_id"], unique=False)
-    op.create_index(op.f("ix_orders_family_id"), "orders", ["family_id"], unique=False)
-    op.create_index(op.f("ix_orders_locked_by_user_id"), "orders", ["locked_by_user_id"], unique=False)
-    op.create_index(op.f("ix_orders_user_id"), "orders", ["user_id"], unique=False)
-
-    op.create_table(
-        "order_items",
-        sa.Column("id", sa.Integer(), autoincrement=True, nullable=False),
-        sa.Column("order_id", sa.Integer(), nullable=False),
-        sa.Column("user_id", sa.Integer(), nullable=False),
-        sa.Column("dish_id", sa.Integer(), nullable=True),
-        sa.Column("dish_name", sa.String(length=64), nullable=False),
-        sa.Column("image_url", sa.String(length=512), nullable=True),
-        sa.Column("quantity", sa.Integer(), nullable=False, server_default="1"),
-        sa.Column("note", sa.String(length=100), nullable=True),
-        sa.Column(
-            "created_at",
-            sa.DateTime(timezone=True),
-            server_default=sa.text("(CURRENT_TIMESTAMP)"),
-            nullable=False,
-        ),
-        sa.Column(
-            "updated_at",
-            sa.DateTime(timezone=True),
-            server_default=sa.text("(CURRENT_TIMESTAMP)"),
-            nullable=False,
-        ),
-        sa.ForeignKeyConstraint(["dish_id"], ["dishes.id"]),
-        sa.ForeignKeyConstraint(["order_id"], ["orders.id"]),
-        sa.ForeignKeyConstraint(["user_id"], ["users.id"]),
-        sa.PrimaryKeyConstraint("id"),
-    )
-    op.create_index(op.f("ix_order_items_order_id"), "order_items", ["order_id"], unique=False)
-    op.create_index(op.f("ix_order_items_user_id"), "order_items", ["user_id"], unique=False)
-
-    op.create_table(
         "parties",
         sa.Column("id", sa.Integer(), autoincrement=True, nullable=False),
         sa.Column("family_id", sa.Integer(), nullable=False),
@@ -258,16 +190,6 @@ def downgrade() -> None:
     op.drop_index(op.f("ix_parties_host_user_id"), table_name="parties")
     op.drop_index(op.f("ix_parties_family_id"), table_name="parties")
     op.drop_table("parties")
-
-    op.drop_index(op.f("ix_order_items_user_id"), table_name="order_items")
-    op.drop_index(op.f("ix_order_items_order_id"), table_name="order_items")
-    op.drop_table("order_items")
-
-    op.drop_index(op.f("ix_orders_user_id"), table_name="orders")
-    op.drop_index(op.f("ix_orders_locked_by_user_id"), table_name="orders")
-    op.drop_index(op.f("ix_orders_family_id"), table_name="orders")
-    op.drop_index(op.f("ix_orders_cook_user_id"), table_name="orders")
-    op.drop_table("orders")
 
     op.drop_index(op.f("ix_dishes_user_id"), table_name="dishes")
     op.drop_table("dishes")

@@ -10,8 +10,6 @@ from app.models import (  # noqa: F401 — register models for autogenerate
     Dish,
     Family,
     FamilyMember,
-    Order,
-    OrderItem,
     Party,
     PartyGuest,
     User,

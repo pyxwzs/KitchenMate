@@ -1,3 +1,5 @@
+const DIALOG = require('../../utils/dialog')
+
 Page({
   data: {
     autosize: {
@@ -11,14 +13,14 @@ Page({
 
   bindSave() {
     if (!this.data.name) {
-      wx.showToast({ title: '请填写姓名', icon: 'none' })
+      DIALOG.showToast('请填写姓名', { icon: 'none' })
       return
     }
     if (!this.data.content) {
-      wx.showToast({ title: '请填写反馈内容', icon: 'none' })
+      DIALOG.showToast('请填写反馈内容', { icon: 'none' })
       return
     }
-    wx.showToast({ title: '感谢反馈' })
+    DIALOG.showToast('感谢反馈', { icon: 'success' })
     setTimeout(() => {
       wx.navigateBack()
     }, 1000)

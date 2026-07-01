@@ -7,3 +7,5 @@
     <text>支持创建家庭空间、邀请成员、协作管理菜单与订单。</text>
   </view>
 </view>
+<van-dialog id="van-dialog" custom-class="km-dialog" />
+<van-toast id="van-toast" />

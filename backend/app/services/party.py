@@ -211,7 +211,13 @@ def close_party(db: Session, party_id: int, operator_id: int) -> dict:
         raise bad_request("聚会已结束")
 
     try:
-        order_service.lock_session(db, party.family_id, operator_id)
+        order_service.clear_session(
+            db,
+            party.family_id,
+            operator_id,
+            require_permission=False,
+            require_items=False,
+        )
     except Exception:
         pass
 

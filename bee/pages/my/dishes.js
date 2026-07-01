@@ -1,4 +1,5 @@
 const MENU = require('../../utils/menu')
+const DIALOG = require('../../utils/dialog')
 
 Page({
   data: {
@@ -32,7 +33,7 @@ Page({
       })
     } catch (err) {
       this.setData({ loading: false })
-      wx.showToast({ title: err.message || '加载失败', icon: 'none' })
+      DIALOG.showToast(err.message || '加载失败', { icon: 'none' })
     }
   },
 
@@ -90,7 +91,7 @@ Page({
     const { dishEditId, dishName, dishDesc, dishImageTempPath } = this.data
     const name = dishName.trim()
     if (!name) {
-      wx.showToast({ title: '请输入菜名', icon: 'none' })
+      DIALOG.showToast('请输入菜名', { icon: 'none' })
       return
     }
     const payload = {
@@ -111,11 +112,11 @@ Page({
       }
       wx.hideLoading()
       this.setData({ dishDialogShow: false })
-      wx.showToast({ title: '已保存' })
+      DIALOG.showToast('已保存', { icon: 'success' })
       this.loadMenu()
     } catch (err) {
       wx.hideLoading()
-      wx.showToast({ title: err.message || '保存失败', icon: 'none' })
+      DIALOG.showToast(err.message || '保存失败', { icon: 'none' })
     }
   },
 
@@ -126,7 +127,7 @@ Page({
       await MENU.updateDish(dish.id, { is_active: isActive })
       this.loadMenu()
     } catch (err) {
-      wx.showToast({ title: err.message || '更新失败', icon: 'none' })
+      DIALOG.showToast(err.message || '更新失败', { icon: 'none' })
       this.loadMenu()
     }
   },
@@ -135,21 +136,20 @@ Page({
     // 图片加载失败时不做处理，占位图已在 wxml 中用 || 设置
   },
 
-  deleteDish(e) {
+  async deleteDish(e) {
     const dishId = e.currentTarget.dataset.id
-    wx.showModal({
+    const confirmed = await DIALOG.showConfirm({
       title: '删除菜品',
       content: '确认删除该菜品？',
-      success: async (res) => {
-        if (!res.confirm) return
-        try {
-          await MENU.deleteDish(dishId)
-          wx.showToast({ title: '已删除' })
-          this.loadMenu()
-        } catch (err) {
-          wx.showToast({ title: err.message || '删除失败', icon: 'none' })
-        }
-      },
+      confirmText: '删除',
     })
+    if (!confirmed) return
+    try {
+      await MENU.deleteDish(dishId)
+      DIALOG.showToast('已删除', { icon: 'success' })
+      this.loadMenu()
+    } catch (err) {
+      DIALOG.showToast(err.message || '删除失败', { icon: 'none' })
+    }
   },
 })

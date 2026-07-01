@@ -1,24 +1,23 @@
-from datetime import UTC, datetime
+from sqlalchemy.orm import Session
 
-from sqlalchemy.orm import Session, joinedload
-
-from app.core.exceptions import bad_request, not_found
-from app.models.order import (
-    ACTIVE_ORDER_STATUSES,
-    HISTORY_ORDER_STATUSES,
-    ORDER_STATUS_LABELS,
-    Order,
-    OrderItem,
-    OrderStatus,
-)
+from app.core.exceptions import bad_request, forbidden, not_found
+from app.models.family import Family, FamilyRole
 from app.models.menu import Dish
+from app.models.order import ORDER_STATUS_LABELS, OrderStatus
 from app.models.user import User
-from app.services.family import get_family_cook, require_family_access, user_display_name
-from app.services.menu import build_orderable_menu_dishes, build_user_menu
+from app.services.family import (
+    get_family_cook,
+    get_member,
+    is_family_owner,
+    require_family_access,
+    user_display_name,
+)
+from app.services.menu import build_orderable_menu_dishes
+from app.services.table_store import TableItem, TableSession, table_store
 
 
 def _serialize_item(
-    item: OrderItem,
+    item: TableItem,
     users: dict[int, User],
     dish_owners: dict[int, int] | None = None,
 ) -> dict:
@@ -47,24 +46,19 @@ def _serialize_item(
 
 
 def _serialize_session(
-    order: Order,
-    viewer_id: int,
+    session: TableSession,
     users: dict[int, User],
     dish_owners: dict[int, int] | None = None,
 ) -> dict:
-    locked_by = users.get(order.locked_by_user_id) if order.locked_by_user_id else None
     return {
-        "id": order.id,
-        "family_id": order.family_id,
-        "cook_user_id": order.cook_user_id,
-        "status": order.status,
-        "status_label": ORDER_STATUS_LABELS[order.status],
-        "note": order.note,
-        "locked_by_user_id": order.locked_by_user_id,
-        "locked_by_name": user_display_name(locked_by) if locked_by else None,
-        "locked_at": order.locked_at,
-        "items": [_serialize_item(item, users, dish_owners) for item in order.items],
-        "created_at": order.created_at,
+        "id": session.id,
+        "family_id": session.family_id,
+        "cook_user_id": session.cook_user_id,
+        "status": OrderStatus.OPEN,
+        "status_label": ORDER_STATUS_LABELS[OrderStatus.OPEN],
+        "note": session.note,
+        "items": [_serialize_item(item, users, dish_owners) for item in session.items],
+        "created_at": session.created_at,
     }
 
 
@@ -75,43 +69,8 @@ def _load_users(db: Session, user_ids: set[int]) -> dict[int, User]:
     return {u.id: u for u in rows}
 
 
-def _get_session(db: Session, family_id: int, session_id: int) -> Order:
-    order = (
-        db.query(Order)
-        .options(joinedload(Order.items))
-        .filter(Order.id == session_id, Order.family_id == family_id)
-        .first()
-    )
-    if not order:
-        raise not_found("Order")
-    return order
-
-
-def _get_open_session(db: Session, family_id: int) -> Order | None:
-    return (
-        db.query(Order)
-        .options(joinedload(Order.items))
-        .filter(Order.family_id == family_id, Order.status == OrderStatus.OPEN)
-        .order_by(Order.created_at.desc())
-        .first()
-    )
-
-
-def _get_or_create_open_session(db: Session, family_id: int) -> Order:
-    session = _get_open_session(db, family_id)
-    if session:
-        return session
-
-    cook = get_family_cook(db, family_id)
-    session = Order(
-        family_id=family_id,
-        user_id=cook.id,
-        cook_user_id=cook.id,
-        status=OrderStatus.OPEN,
-    )
-    db.add(session)
-    db.flush()
-    return session
+def get_open_session(family_id: int) -> TableSession | None:
+    return table_store.get(family_id)
 
 
 def _get_family_menu_map(db: Session, family_id: int, viewer_id: int) -> dict[int, object]:
@@ -138,42 +97,17 @@ def _validate_menu_items(
     return validated
 
 
-def _merge_items(session: Order, user_id: int, validated_items: list[tuple]) -> None:
-    for dish, quantity, note in validated_items:
-        merged = False
-        # 仅在无备注或备注相同时合并数量
-        if not note:
-            for item in session.items:
-                if item.user_id == user_id and item.dish_id == dish.id and not item.note:
-                    item.quantity += quantity
-                    merged = True
-                    break
-        if not merged:
-            session.items.append(
-                OrderItem(
-                    user_id=user_id,
-                    dish_id=dish.id,
-                    dish_name=dish.name,
-                    image_url=dish.image_url,
-                    quantity=quantity,
-                    note=note,
-                )
-            )
-
-
-def _decrease_my_dish(session: Order, user_id: int, dish_id: int, amount: int) -> None:
-    remaining = amount
-    for item in sorted(session.items, key=lambda x: x.id, reverse=True):
-        if item.user_id != user_id or item.dish_id != dish_id:
-            continue
-        if item.quantity <= remaining:
-            remaining -= item.quantity
-            session.items.remove(item)
-        else:
-            item.quantity -= remaining
-            remaining = 0
-        if remaining <= 0:
-            break
+def _session_for_response(
+    db: Session, session: TableSession | None, viewer_id: int
+) -> dict | None:
+    if not session:
+        return None
+    user_ids = {item.user_id for item in session.items}
+    dish_ids = {item.dish_id for item in session.items if item.dish_id}
+    dish_owners = _load_dish_owners(db, dish_ids)
+    user_ids.update(dish_owners.values())
+    users = _load_users(db, user_ids)
+    return _serialize_session(session, users, dish_owners)
 
 
 def adjust_session_item(
@@ -183,29 +117,19 @@ def adjust_session_item(
     dish_id: int,
     delta: int,
     note: str | None = None,
-) -> Order | None:
+) -> TableSession | None:
     require_family_access(db, family_id, user_id)
     if delta == 0:
         raise bad_request("调整数量不能为 0")
 
-    session = _get_open_session(db, family_id)
     if delta < 0:
-        if not session:
-            return None
-        _decrease_my_dish(session, user_id, dish_id, -delta)
-        db.commit()
-        db.refresh(session)
-        return _get_session(db, family_id, session.id)
+        return table_store.decrease_my_dish(family_id, user_id, dish_id, -delta)
 
-    if not session:
-        session = _get_or_create_open_session(db, family_id)
     validated = _validate_menu_items(
         db, family_id, user_id, [{"dish_id": dish_id, "quantity": delta, "note": note}]
     )
-    _merge_items(session, user_id, validated)
-    db.commit()
-    db.refresh(session)
-    return _get_session(db, family_id, session.id)
+    cook = get_family_cook(db, family_id)
+    return table_store.merge_items(family_id, cook.id, user_id, validated)
 
 
 def update_session_item(
@@ -215,29 +139,21 @@ def update_session_item(
     item_id: int,
     quantity: int | None = None,
     note: str | None = None,
-) -> Order | None:
+) -> TableSession | None:
     require_family_access(db, family_id, user_id)
-    session = _get_open_session(db, family_id)
-    if not session:
+    if not table_store.get(family_id):
         raise not_found("订单")
 
-    target = next((i for i in session.items if i.id == item_id), None)
-    if not target:
-        raise not_found("菜品")
-    if target.user_id != user_id:
+    try:
+        session = table_store.update_item(
+            family_id, user_id, item_id, quantity, note
+        )
+    except PermissionError:
         raise forbidden("只能修改自己的点餐")
 
-    if quantity is not None:
-        if quantity <= 0:
-            session.items.remove(target)
-        else:
-            target.quantity = quantity
-    if note is not None:
-        target.note = note.strip() if note.strip() else None
-
-    db.commit()
-    db.refresh(session)
-    return _get_session(db, family_id, session.id)
+    if session is None:
+        raise not_found("菜品")
+    return session
 
 
 def add_to_session(
@@ -246,34 +162,51 @@ def add_to_session(
     user_id: int,
     items: list[dict],
     note: str | None,
-) -> Order:
+) -> TableSession:
     require_family_access(db, family_id, user_id)
     validated = _validate_menu_items(db, family_id, user_id, items)
-    session = _get_or_create_open_session(db, family_id)
-    _merge_items(session, user_id, validated)
+    cook = get_family_cook(db, family_id)
+    session = table_store.merge_items(family_id, cook.id, user_id, validated)
 
     if note and note.strip():
-        session.note = note.strip()
-
-    db.commit()
-    db.refresh(session)
-    return _get_session(db, family_id, session.id)
+        table_store.set_note(family_id, note.strip())
+        session = table_store.get(family_id) or session
+    return session
 
 
-def lock_session(db: Session, family_id: int, user_id: int) -> Order:
+def can_complete_meal(db: Session, family_id: int, user_id: int) -> bool:
+    from app.services.party import is_active_party_host
+
+    if is_active_party_host(db, family_id, user_id):
+        return True
+    member = get_member(db, family_id, user_id)
+    if member and member.role == FamilyRole.ADMIN:
+        return True
+    family = db.get(Family, family_id)
+    return bool(family and is_family_owner(family, user_id))
+
+
+def clear_session(
+    db: Session,
+    family_id: int,
+    user_id: int,
+    *,
+    require_permission: bool = True,
+    require_items: bool = True,
+) -> None:
     require_family_access(db, family_id, user_id)
-    session = _get_open_session(db, family_id)
-    if not session:
-        raise bad_request("No open order session to lock")
-    if not session.items:
-        raise bad_request("Cannot lock an empty order session")
+    if require_permission and not can_complete_meal(db, family_id, user_id):
+        raise forbidden("只有家庭管理员或聚会发起者可以确认出餐")
 
-    session.status = OrderStatus.LOCKED
-    session.locked_by_user_id = user_id
-    session.locked_at = datetime.now(UTC)
-    db.commit()
-    db.refresh(session)
-    return _get_session(db, family_id, session.id)
+    session = table_store.get(family_id)
+    if not session:
+        if require_items:
+            raise bad_request("当前没有进行中的点餐")
+        return
+    if require_items and not session.items:
+        raise bad_request("还没有点菜，无法确认出餐")
+
+    table_store.clear(family_id)
 
 
 def _load_dish_owners(db: Session, dish_ids: set[int]) -> dict[int, int]:
@@ -284,12 +217,11 @@ def _load_dish_owners(db: Session, dish_ids: set[int]) -> dict[int, int]:
 
 
 def _build_summary_from_session(
-    session: Order | None,
-    viewer_id: int,
+    session: TableSession | None,
     users: dict[int, User],
     dish_owners: dict[int, int] | None = None,
 ) -> dict:
-    if not session:
+    if not session or not session.items:
         return {
             "session_id": None,
             "family_id": None,
@@ -315,6 +247,8 @@ def _build_summary_from_session(
             dish_totals[key] = {
                 "dish_id": item["dish_id"],
                 "dish_name": item["dish_name"],
+                "cook_name": item.get("cook_name"),
+                "cook_user_id": item.get("cook_user_id"),
                 "image_url": item["image_url"],
                 "quantity": 0,
             }
@@ -349,58 +283,22 @@ def _build_summary_from_session(
         "dish_totals": list(dish_totals.values()),
         "by_user": list(by_user.values()),
         "by_cook": list(by_cook.values()),
-        "session": _serialize_session(session, viewer_id, users, dish_owners),
+        "session": _serialize_session(session, users, dish_owners),
     }
 
 
 def get_open_session_summary(db: Session, family_id: int, viewer_id: int) -> dict:
     require_family_access(db, family_id, viewer_id)
-    session = _get_open_session(db, family_id)
+    session = table_store.get(family_id)
     user_ids: set[int] = set()
     dish_owners: dict[int, int] = {}
     if session:
-        user_ids.add(session.locked_by_user_id or 0)
         user_ids.update(item.user_id for item in session.items)
         dish_ids = {item.dish_id for item in session.items if item.dish_id}
         dish_owners = _load_dish_owners(db, dish_ids)
         user_ids.update(dish_owners.values())
-    user_ids.discard(0)
     users = _load_users(db, user_ids)
-    summary = _build_summary_from_session(session, viewer_id, users, dish_owners)
+    summary = _build_summary_from_session(session, users, dish_owners)
     summary["family_id"] = family_id
+    summary["can_complete_meal"] = can_complete_meal(db, family_id, viewer_id)
     return summary
-
-
-def list_history_sessions(
-    db: Session,
-    family_id: int,
-    viewer_id: int,
-    limit: int = 50,
-) -> list[dict]:
-    require_family_access(db, family_id, viewer_id)
-
-    sessions = (
-        db.query(Order)
-        .options(joinedload(Order.items))
-        .filter(
-            Order.family_id == family_id,
-            Order.status.in_(HISTORY_ORDER_STATUSES),
-        )
-        .order_by(Order.locked_at.desc(), Order.created_at.desc())
-        .limit(limit)
-        .all()
-    )
-
-    user_ids: set[int] = set()
-    dish_ids: set[int] = set()
-    for session in sessions:
-        if session.locked_by_user_id:
-            user_ids.add(session.locked_by_user_id)
-        user_ids.update(item.user_id for item in session.items)
-        dish_ids.update(item.dish_id for item in session.items if item.dish_id)
-    dish_owners = _load_dish_owners(db, dish_ids)
-    user_ids.update(dish_owners.values())
-    users = _load_users(db, user_ids)
-    return [
-        _serialize_session(s, viewer_id, users, dish_owners) for s in sessions
-    ]

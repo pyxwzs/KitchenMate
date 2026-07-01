@@ -1,4 +1,25 @@
+const Dialog = require('@vant/weapp/dialog/dialog').default
+const Toast = require('@vant/weapp/toast/toast').default
 const { getErrorMessage } = require('./error')
+
+Dialog.setDefaultOptions({
+  width: '580rpx',
+  theme: 'round-button',
+  messageAlign: 'center',
+  transition: 'scale',
+  overlay: true,
+  confirmButtonColor: '#C87E40',
+  cancelButtonColor: '#A08B6F',
+  className: 'km-dialog-wrap',
+  confirmButtonText: '确定',
+  cancelButtonText: '取消',
+})
+
+Toast.setDefaultOptions({
+  position: 'middle',
+  forbidClick: false,
+  duration: 2000,
+})
 
 /** 将后端英文错误映射为中文（兼容旧数据） */
 const MESSAGE_MAP = {
@@ -15,7 +36,8 @@ const MESSAGE_MAP = {
   'Member not found': '成员不存在',
   'You are already a member of this family': '您已是该家庭成员',
   'No open order session to lock': '当前没有进行中的点餐',
-  'Cannot lock an empty order session': '订单为空，无法提交',
+  'Cannot lock an empty order session': '还没有点菜，无法确认出餐',
+  '只有家庭管理员或聚会发起者可以确认出餐': '只有家庭管理员或聚会发起者可以确认出餐',
   'No dishes available for ordering': '暂无可点菜品',
 }
 
@@ -26,25 +48,58 @@ function localizeMessage(message) {
 }
 
 function showAlert(content, title = '提示') {
-  const text = localizeMessage(typeof content === 'string' ? content : String(content || ''))
-  return new Promise((resolve) => {
-    wx.showModal({
-      title,
-      content: text,
-      showCancel: false,
-      confirmText: '确定',
-      success: () => resolve(true),
-      fail: () => resolve(false),
-    })
-  })
+  const message = localizeMessage(typeof content === 'string' ? content : String(content || ''))
+  return Dialog.alert({
+    title,
+    message,
+    showCancelButton: false,
+    confirmButtonText: '确定',
+  }).catch(() => false)
+}
+
+function showConfirm(options) {
+  const opts = typeof options === 'string'
+    ? { content: options }
+    : (options || {})
+  const title = opts.title || '提示'
+  const message = localizeMessage(opts.content || opts.message || '')
+  return Dialog.confirm({
+    title,
+    message,
+    confirmButtonText: opts.confirmText || '确定',
+    cancelButtonText: opts.cancelText || '取消',
+  }).then(() => true).catch(() => false)
 }
 
 function showError(err, fallback = '操作失败') {
   return showAlert(getErrorMessage(err, fallback))
 }
 
+function showToast(title, options) {
+  const opts = typeof options === 'object' && options ? options : {}
+  const message = localizeMessage(typeof title === 'string' ? title : String(title || ''))
+  const icon = opts.icon || 'none'
+  let type = 'text'
+  if (icon === 'success') type = 'success'
+  if (icon === 'error' || icon === 'fail') type = 'fail'
+  if (icon === 'loading') type = 'loading'
+  Toast({
+    message,
+    type,
+    duration: opts.duration || 2000,
+    position: 'middle',
+  })
+}
+
+function hideToast() {
+  Toast.clear()
+}
+
 module.exports = {
   showAlert,
+  showConfirm,
   showError,
+  showToast,
+  hideToast,
   localizeMessage,
 }

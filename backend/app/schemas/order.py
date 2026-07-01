@@ -47,11 +47,8 @@ class OrderSessionResponse(BaseModel):
     status: OrderStatus
     status_label: str
     note: str | None = None
-    locked_by_user_id: int | None = None
-    locked_by_name: str | None = None
-    locked_at: datetime | None = None
     items: list[OrderItemResponse]
-    created_at: datetime
+    created_at: datetime | None = None
 
 
 class DishSummaryItem(BaseModel):
@@ -81,3 +78,4 @@ class OrderSummaryResponse(BaseModel):
     by_user: list[UserOrderSummary]
     by_cook: list[CookOrderSummary] = []
     session: OrderSessionResponse | None = None
+    can_complete_meal: bool = False

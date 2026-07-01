@@ -58,7 +58,7 @@
     <view class="action-card primary" bindtap="goOrder">
       <van-icon name="shop-o" size="48rpx" color="#e64340" />
       <view class="action-title">开始点餐</view>
-      <view class="action-desc">浏览菜单，提交订单</view>
+      <view class="action-desc">浏览菜单，随时加菜</view>
     </view>
     <view class="action-card" bindtap="goFamily">
       <van-icon name="friends-o" size="48rpx" color="#ff9800" />
@@ -72,3 +72,5 @@
     </view>
   </view>
 </view>
+<van-dialog id="van-dialog" custom-class="km-dialog" />
+<van-toast id="van-toast" />

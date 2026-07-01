@@ -6,7 +6,7 @@ from sqlalchemy.orm import Session, joinedload
 
 from app.core.exceptions import bad_request, forbidden, not_found
 from app.models.family import Family, FamilyMember, FamilyRole
-from app.models.order import Order, OrderItem
+from app.services.table_store import table_store
 from app.models.party import Party, PartyGuest
 from app.models.user import User
 
@@ -385,14 +385,7 @@ def delete_family(db: Session, family_id: int, operator_id: int) -> None:
         )
         db.query(Party).filter(Party.family_id == family_id).delete(synchronize_session=False)
 
-    order_ids = [
-        oid for (oid,) in db.query(Order.id).filter(Order.family_id == family_id).all()
-    ]
-    if order_ids:
-        db.query(OrderItem).filter(OrderItem.order_id.in_(order_ids)).delete(
-            synchronize_session=False
-        )
-        db.query(Order).filter(Order.family_id == family_id).delete(synchronize_session=False)
+    table_store.clear(family_id)
 
     db.query(FamilyMember).filter(FamilyMember.family_id == family_id).delete(
         synchronize_session=False

@@ -2,6 +2,7 @@ const CONFIG = require('../config.js')
 const API = require('./api')
 const i18n = require('../i18n/index')
 const { getErrorMessage, isNetworkError } = require('./error')
+const DIALOG = require('./dialog')
 const $t = i18n.$t()
 
 async function checkSession() {
@@ -57,10 +58,7 @@ async function wxaCode() {
         resolve(res.code)
       },
       fail() {
-        wx.showToast({
-          title: $t.common.getCodeError,
-          icon: 'none',
-        })
+        DIALOG.showToast($t.common.getCodeError, { icon: 'none' })
         resolve($t.common.getCodeError)
       },
     })
@@ -74,13 +72,7 @@ async function loginWithKitchenMate(page) {
       page.onShow()
     }
   } catch (err) {
-    wx.showModal({
-      confirmText: $t.common.confirm,
-      cancelText: $t.common.cancel,
-      title: $t.common.loginFail,
-      content: getErrorMessage(err, '登录失败'),
-      showCancel: false,
-    })
+    await DIALOG.showAlert(getErrorMessage(err, '登录失败'), $t.common.loginFail)
   }
 }
 
@@ -124,18 +116,8 @@ async function checkAndAuthorize(scope) {
             },
             fail(e) {
               console.error(e)
-              wx.showModal({
-                content: $t.common.authorizeRequired,
-                showCancel: false,
-                confirmText: $t.common.authorize,
-                confirmColor: '#e64340',
-                success() {
-                  wx.openSetting()
-                },
-                fail(err) {
-                  console.error(err)
-                  reject(err)
-                },
+              DIALOG.showAlert($t.common.authorizeRequired, $t.common.authorize).then(() => {
+                wx.openSetting()
               })
             },
           })

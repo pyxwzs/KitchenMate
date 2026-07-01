@@ -289,7 +289,7 @@ Page({
         creating: false,
       }))
       this.startPartyRefresh()
-      wx.showToast({ title: '聚会已开启', icon: 'success' })
+      DIALOG.showToast('聚会已开启', { icon: 'success' })
     } catch (err) {
       this.setData({ creating: false })
       await DIALOG.showError(err, '创建失败')
@@ -320,10 +320,10 @@ Page({
     if (!qrImagePath) return
     wx.saveImageToPhotosAlbum({
       filePath: qrImagePath,
-      success: () => wx.showToast({ title: '已保存到相册' }),
+      success: () => DIALOG.showToast('已保存到相册', { icon: 'success' }),
       fail: (err) => {
         if (err.errMsg && err.errMsg.includes('auth')) {
-          wx.showToast({ title: '请先授权访问相册', icon: 'none' })
+          DIALOG.showToast('请先授权访问相册', { icon: 'none' })
         }
       },
     })
@@ -334,7 +334,7 @@ Page({
     if (!party) return
     wx.setClipboardData({
       data: party.join_code,
-      success: () => wx.showToast({ title: '聚会码已复制' }),
+      success: () => DIALOG.showToast('聚会码已复制', { icon: 'success' }),
     })
   },
 
@@ -343,36 +343,34 @@ Page({
     if (!party) return
     wx.setClipboardData({
       data: party.share_text,
-      success: () => wx.showToast({ title: '文案已复制' }),
+      success: () => DIALOG.showToast('文案已复制', { icon: 'success' }),
     })
   },
 
-  closeParty() {
+  async closeParty() {
     const { party, closing, canCloseParty } = this.data
     if (!party || closing) return
     if (!canCloseParty) {
       DIALOG.showAlert('只有聚会发起者或家庭管理员可以结束聚会')
       return
     }
-    wx.showModal({
+    const confirmed = await DIALOG.showConfirm({
       title: '结束聚会',
-      content: '结束后来宾不能再点餐，当前订单会一并提交',
+      content: '结束后来宾不能再点餐，当前本桌点餐会一并结束',
       confirmText: '结束',
-      success: async (res) => {
-        if (!res.confirm) return
-        this.setData({ closing: true })
-        try {
-          await PARTY.closeParty(party.id)
-          PARTY.clearPartyContext()
-          this.stopPartyRefresh()
-          wx.showToast({ title: '聚会已结束', icon: 'success' })
-          this.setData({ party: null, mode: 'hub', closing: false })
-        } catch (err) {
-          this.setData({ closing: false })
-          await DIALOG.showError(err, '操作失败')
-        }
-      },
     })
+    if (!confirmed) return
+    this.setData({ closing: true })
+    try {
+      await PARTY.closeParty(party.id)
+      PARTY.clearPartyContext()
+      this.stopPartyRefresh()
+      DIALOG.showToast('聚会已结束', { icon: 'success' })
+      this.setData({ party: null, mode: 'hub', closing: false })
+    } catch (err) {
+      this.setData({ closing: false })
+      await DIALOG.showError(err, '操作失败')
+    }
   },
 
   goOrder() {
