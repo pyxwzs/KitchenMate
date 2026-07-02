@@ -101,14 +101,6 @@ function hasJoinedParty(party) {
   return !!(party.is_host || party.is_guest)
 }
 
-function setPartyContextIfJoined(party) {
-  if (hasJoinedParty(party)) {
-    setPartyContext(party)
-    return true
-  }
-  return false
-}
-
 /** 同步服务端聚会状态，返回 active party 或 null（仅已加入时保留上下文） */
 async function syncPartyContext() {
   const cached = getPartyContext()
@@ -240,7 +232,6 @@ async function resolveOrderContext(families) {
 }
 
 module.exports = {
-  PARTY_CONTEXT_KEY,
   setPartyContext,
   getPartyContext,
   clearPartyContext,
@@ -253,5 +244,4 @@ module.exports = {
   resolveOrderContext,
   downloadPartyWxacode,
   hasJoinedParty,
-  setPartyContextIfJoined,
 }

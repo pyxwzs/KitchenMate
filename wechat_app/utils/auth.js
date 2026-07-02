@@ -94,7 +94,6 @@ async function silentLogin() {
 
 module.exports = {
   checkHasLogined,
-  wxaCode,
   loginOut,
   authorize,
   silentLogin,

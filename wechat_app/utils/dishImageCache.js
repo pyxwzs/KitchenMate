@@ -59,14 +59,7 @@ async function resolveItemsImages(items) {
   return result
 }
 
-function clearDishImageCache() {
-  Object.keys(byDishId).forEach((k) => { delete byDishId[k] })
-  Object.keys(byPath).forEach((k) => { delete byPath[k] })
-}
-
 module.exports = {
   registerDishes,
-  resolveOrderItemImage,
   resolveItemsImages,
-  clearDishImageCache,
 }

@@ -1,26 +1,15 @@
-/**
- * 获取当前使用的语言
- */
+const zhCN = require('./zh_CN.js')
+
 function getLanguage() {
-  const Language = wx.getStorageSync('Language')
-  if (Language) {
-    return Language
-  }
-  const allowLanguage = ['zh_CN', 'en'] // 目前支持的语言包
-  const appBaseInfo = wx.getAppBaseInfo()
-  let _language = appBaseInfo.language || 'zh_CN'
-  if (!allowLanguage.includes(_language)) {
-    _language = 'zh_CN'
-  }
-  wx.setStorageSync('Language', _language)
-  return _language
+  return 'zh_CN'
 }
-function $t(){
-  return require(getLanguage() + '.js');
+
+function $t() {
+  return zhCN
 }
 
 function setTabBarLanguage() {
-  const $t = this.$t()
+  const $t = zhCN
   wx.setTabBarItem({
     index: 0,
     pagePath: 'pages/home/index',
@@ -50,8 +39,9 @@ function setTabBarLanguage() {
     text: $t.my.title,
   })
 }
+
 module.exports = {
-  setTabBarLanguage: setTabBarLanguage,
-  getLanguage: getLanguage,
-  $t: $t,
+  setTabBarLanguage,
+  getLanguage,
+  $t,
 }

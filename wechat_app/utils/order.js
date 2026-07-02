@@ -146,5 +146,4 @@ module.exports = {
   resolveSummaryImages,
   getMyDishQuantities,
   flattenTableCartItems,
-  formatDishNameWithCook,
 }

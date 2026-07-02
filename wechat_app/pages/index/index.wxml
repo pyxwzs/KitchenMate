@@ -118,7 +118,6 @@
                     class="dish-img"
                     src="{{item.imageUrl || '/images/default.png'}}"
                     mode="aspectFill"
-                    binderror="onImgError"
                     lazy-load
                   ></image>
                   <view class="dish-gradient"></view>

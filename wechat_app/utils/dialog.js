@@ -1,6 +1,6 @@
 const Dialog = require('@vant/weapp/dialog/dialog').default
 const Toast = require('@vant/weapp/toast/toast').default
-const { getErrorMessage, isNetworkError, NETWORK_MESSAGE } = require('./error')
+const { getErrorMessage, isNetworkError } = require('./error')
 
 Dialog.setDefaultOptions({
   width: '580rpx',
@@ -134,7 +134,7 @@ function showToast(title, options) {
   })
 }
 
-function showNetworkToast(message = NETWORK_MESSAGE) {
+function showNetworkToast(message = '网络异常') {
   showToast(message, { icon: 'none', duration: 2500 })
 }
 
@@ -167,5 +167,4 @@ module.exports = {
   showLoading,
   hideToast,
   hideLoading,
-  localizeMessage,
 }

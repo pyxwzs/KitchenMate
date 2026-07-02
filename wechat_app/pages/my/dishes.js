@@ -132,10 +132,6 @@ Page({
     }
   },
 
-  onImgError(e) {
-    // 图片加载失败时不做处理，占位图已在 wxml 中用 || 设置
-  },
-
   async deleteDish(e) {
     const dishId = e.currentTarget.dataset.id
     const confirmed = await DIALOG.showConfirm({

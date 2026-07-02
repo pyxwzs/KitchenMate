@@ -52,7 +52,6 @@ function getErrorMessage(err, fallback = '操作失败') {
 }
 
 module.exports = {
-  NETWORK_MESSAGE,
   isNetworkError,
   getErrorMessage,
 }

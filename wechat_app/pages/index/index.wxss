@@ -581,20 +581,6 @@
 
 .cart-item-note.has-note { color: #C87E40; }
 
-/* ── 备注编辑对话框 ── */
-.note-dialog-body { padding: 20rpx 32rpx 8rpx; }
-.note-textarea {
-  width: 100%;
-  min-height: 80rpx;
-  max-height: 160rpx;
-  padding: 16rpx 20rpx;
-  background: #f7f7f7;
-  border-radius: 16rpx;
-  font-size: 26rpx;
-  box-sizing: border-box;
-  line-height: 1.5;
-}
-
 /* ── FAB ── */
 .fab {
   position: fixed;

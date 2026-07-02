@@ -81,6 +81,5 @@ function scanJoinCode(type) {
 }
 
 module.exports = {
-  parseScanPayload,
   scanJoinCode,
 }

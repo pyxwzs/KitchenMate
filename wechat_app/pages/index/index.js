@@ -388,7 +388,6 @@ Page({
     wx.navigateTo({ url: '/pages/family/index' })
   },
 
-  onImgError() {},
 
   goMyDishes() {
     wx.navigateTo({ url: '/pages/my/dishes' })

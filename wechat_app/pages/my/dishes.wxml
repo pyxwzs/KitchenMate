@@ -25,7 +25,7 @@
 
   <view wx:else class="dish-list">
     <view class="dish-item" wx:for="{{dishes}}" wx:key="id">
-      <image class="dish-img" src="{{item.imageUrl || '/images/default.png'}}" mode="aspectFill" binderror="onImgError"></image>
+      <image class="dish-img" src="{{item.imageUrl || '/images/default.png'}}" mode="aspectFill"></image>
       <view class="dish-body">
         <view class="dish-name">{{item.name}}</view>
         <view class="dish-desc" wx:if="{{item.description}}">{{item.description}}</view>

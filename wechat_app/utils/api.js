@@ -26,9 +26,6 @@ function normalizeUser(user) {
       avatarUrl: getAssetUrl(user.avatar_url),
       mobile: user.phone || '',
     },
-    userLevel: {
-      name: '',
-    },
   }
 }
 
@@ -124,14 +121,6 @@ function isProfileComplete(user) {
   return !!(user && user.nickname && user.real_name && user.avatar_url)
 }
 
-function healthCheck() {
-  return request({
-    url: '/health',
-    method: 'GET',
-    auth: false,
-  })
-}
-
 module.exports = {
   getAssetUrl,
   normalizeUser,
@@ -140,6 +129,5 @@ module.exports = {
   getMe,
   updateProfile,
   uploadAvatar,
-  healthCheck,
   isProfileComplete,
 }

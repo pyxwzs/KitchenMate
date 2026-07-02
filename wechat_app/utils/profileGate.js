@@ -16,10 +16,6 @@ function consumePending() {
   return action
 }
 
-function clearPending() {
-  wx.removeStorageSync(PENDING_ACTION_KEY)
-}
-
 /** 资料未完善时保存待办并跳转登录页，完善后再继续 */
 async function ensureProfileReady(options) {
   options = options || {}
@@ -46,10 +42,8 @@ function pendingActionLabel(action) {
 }
 
 module.exports = {
-  savePending,
   peekPending,
   consumePending,
-  clearPending,
   ensureProfileReady,
   pendingActionLabel,
 }

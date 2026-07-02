@@ -120,25 +120,6 @@ async function formatMyMenuAsync(menu) {
   }
 }
 
-function formatFamilyMenu(menu) {
-  if (!menu) {
-    return menu
-  }
-  return {
-    ...menu,
-    dishes: (menu.dishes || []).map(formatDishImage),
-  }
-}
-
-function formatMyMenu(menu) {
-  if (!menu) {
-    return menu
-  }
-  return {
-    dishes: (menu.dishes || []).map(formatDishImage),
-  }
-}
-
 /** 按成员分组菜单，仅包含有菜的成员（后端已过滤） */
 function buildDishGroups(dishes, members) {
   const nameMap = {}
@@ -218,11 +199,8 @@ module.exports = {
   updateDish,
   deleteDish,
   uploadDishImage,
-  formatFamilyMenu,
-  formatMyMenu,
   formatFamilyMenuAsync,
   formatMyMenuAsync,
-  buildDishGroups,
   buildMenuSubtitle,
   applyMenuFilter,
   buildMenuFilterOptions,

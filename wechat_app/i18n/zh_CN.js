@@ -3,9 +3,6 @@ module.exports = {
     cancel: '取消',
     confirm: '确定',
     getCodeError: '获取code失败',
-    loginFail: '无法登录',
-    authorizeRequired: '需要获得您的授权',
-    authorize: '立即授权',
     upgrade: '新版本已经准备好，是否重启应用？',
   },
   index: {
