@@ -8,6 +8,7 @@ const NETWORK_HINTS = [
   'connection reset',
   'network error',
   'network is down',
+  'network unavailable',
   'timeout',
   'timed out',
   'failed to connect',
@@ -18,6 +19,13 @@ const NETWORK_HINTS = [
   'interrupted',
   'abort',
   'ssl',
+  '网络',
+  '超时',
+  '连接失败',
+  '无法连接',
+  '请求失败',
+  'net::',
+  'offline',
 ]
 
 function isNetworkError(err) {
@@ -28,7 +36,7 @@ function isNetworkError(err) {
     return true
   }
   const statusCode = err.statusCode
-  if (statusCode === 0 || statusCode === 502 || statusCode === 503 || statusCode === 504) {
+  if (statusCode === 0 || statusCode === 408 || (statusCode >= 500 && statusCode < 600)) {
     return true
   }
   const text = [

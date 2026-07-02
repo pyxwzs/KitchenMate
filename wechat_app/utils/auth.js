@@ -1,9 +1,6 @@
 const CONFIG = require('../config.js')
 const API = require('./api')
-const i18n = require('../i18n/index')
-const { getErrorMessage, isNetworkError } = require('./error')
-const DIALOG = require('./dialog')
-const $t = i18n.$t()
+const { isNetworkError } = require('./error')
 
 async function checkSession() {
   return new Promise((resolve) => {
@@ -48,14 +45,17 @@ async function checkHasLogined() {
 }
 
 async function wxaCode() {
-  return new Promise((resolve) => {
+  return new Promise((resolve, reject) => {
     wx.login({
       success(res) {
-        resolve(res.code)
+        if (res.code) {
+          resolve(res.code)
+          return
+        }
+        reject({ isNetworkError: true, message: '网络异常' })
       },
       fail() {
-        DIALOG.showToast($t.common.getCodeError, { icon: 'none' })
-        resolve($t.common.getCodeError)
+        reject({ isNetworkError: true, message: '网络异常' })
       },
     })
   })
@@ -73,9 +73,6 @@ async function authorize() {
   }
 
   const code = await wxaCode()
-  if (!code || code === $t.common.getCodeError) {
-    throw new Error($t.common.getCodeError)
-  }
   return API.wechatLogin(code)
 }
 

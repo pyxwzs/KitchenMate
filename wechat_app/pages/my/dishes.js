@@ -33,7 +33,7 @@ Page({
       })
     } catch (err) {
       this.setData({ loading: false })
-      DIALOG.showToast(err.message || '加载失败', { icon: 'none' })
+      await DIALOG.showError(err, '加载失败')
     }
   },
 
@@ -116,7 +116,7 @@ Page({
       this.loadMenu()
     } catch (err) {
       DIALOG.hideLoading()
-      DIALOG.showToast(err.message || '保存失败', { icon: 'none' })
+      await DIALOG.showError(err, '保存失败')
     }
   },
 
@@ -127,7 +127,7 @@ Page({
       await MENU.updateDish(dish.id, { is_active: isActive })
       this.loadMenu()
     } catch (err) {
-      DIALOG.showToast(err.message || '更新失败', { icon: 'none' })
+      await DIALOG.showError(err, '更新失败')
       this.loadMenu()
     }
   },
@@ -145,7 +145,7 @@ Page({
       DIALOG.showToast('已删除', { icon: 'success' })
       this.loadMenu()
     } catch (err) {
-      DIALOG.showToast(err.message || '删除失败', { icon: 'none' })
+      await DIALOG.showError(err, '删除失败')
     }
   },
 })

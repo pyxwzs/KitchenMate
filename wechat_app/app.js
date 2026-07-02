@@ -3,7 +3,7 @@ const AUTH = require('utils/auth')
 const API = require('utils/api')
 const { resolveAssetForDisplay } = require('utils/asset')
 const i18n = require("i18n/index")
-const { getErrorMessage, isNetworkError } = require('utils/error')
+const { isNetworkError } = require('utils/error')
 const DIALOG = require('utils/dialog')
 
 App({
@@ -100,7 +100,8 @@ App({
       })
       .catch(err => {
         this._loginPromise = null
-        DIALOG.showToast(getErrorMessage(err, '登录失败'), { icon: 'none', duration: 2500 })
+        DIALOG.hideLoading()
+        DIALOG.showError(err, '登录失败')
         if (!isNetworkError(err)) {
           const pages = getCurrentPages()
           const currentRoute = pages.length ? pages[pages.length - 1].route : ''

@@ -67,7 +67,7 @@ Page({
       DIALOG.showToast('保存成功', { icon: 'success' })
       await this.loadUserInfo()
     } catch (err) {
-      DIALOG.showToast(err.message || '保存失败', { icon: 'none' })
+      await DIALOG.showError(err, '保存失败')
     }
   },
 
@@ -83,7 +83,7 @@ Page({
       DIALOG.showToast('头像已更新', { icon: 'success' })
       await this.loadUserInfo()
     } catch (err) {
-      DIALOG.showToast(err.message || '上传失败', { icon: 'none' })
+      await DIALOG.showError(err, '上传失败')
     }
   },
 

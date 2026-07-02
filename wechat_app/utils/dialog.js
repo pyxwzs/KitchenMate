@@ -2,15 +2,18 @@ const Dialog = require('@vant/weapp/dialog/dialog').default
 const Toast = require('@vant/weapp/toast/toast').default
 const { getErrorMessage, isNetworkError } = require('./error')
 
+const TOAST_DURATION = 2200
+const NETWORK_TOAST_DURATION = 2500
+
 Dialog.setDefaultOptions({
   width: '580rpx',
   theme: 'round-button',
   messageAlign: 'center',
   transition: 'scale',
   overlay: true,
-  confirmButtonColor: '#C87E40',
-  cancelButtonColor: '#A08B6F',
-  className: 'km-dialog-wrap',
+  confirmButtonColor: '#E8A060',
+  cancelButtonColor: '#C4A57B',
+  className: ' km-dialog-dark',
   confirmButtonText: '确定',
   cancelButtonText: '取消',
 })
@@ -18,7 +21,7 @@ Dialog.setDefaultOptions({
 Toast.setDefaultOptions({
   position: 'middle',
   forbidClick: false,
-  duration: 2000,
+  duration: TOAST_DURATION,
 })
 
 /** 将后端英文错误映射为中文（兼容旧数据） */
@@ -61,7 +64,6 @@ function withPageContext(options, page) {
   }
 }
 
-/** 等待页面就绪后再弹出（解决 App.onLaunch 时 van-toast 尚未挂载） */
 function runWithPage(action, attempt = 0) {
   const page = getActivePage()
   if (page) {
@@ -73,18 +75,28 @@ function runWithPage(action, attempt = 0) {
   }
 }
 
-function showAlert(content, title = '提示') {
-  const message = localizeMessage(typeof content === 'string' ? content : String(content || ''))
-  return new Promise((resolve) => {
-    runWithPage((page) => {
-      Dialog.alert(withPageContext({
-        title,
-        message,
-        showCancelButton: false,
-        confirmButtonText: '确定',
-      }, page)).catch(() => false).then(resolve)
-    })
+/** 统一黑色半透明居中提示 */
+function showMessage(message, options) {
+  const opts = options || {}
+  const text = localizeMessage(typeof message === 'string' ? message : String(message || ''))
+  const isLoading = !!opts.loading
+  runWithPage((page) => {
+    if (!opts.keepPrevious) {
+      Toast.clear()
+    }
+    Toast(withPageContext({
+      message: text,
+      type: isLoading ? 'loading' : 'text',
+      duration: isLoading ? 0 : (opts.duration != null ? opts.duration : TOAST_DURATION),
+      position: 'middle',
+      forbidClick: isLoading || !!opts.forbidClick,
+    }, page))
   })
+}
+
+function showAlert(content) {
+  showMessage(content, { duration: TOAST_DURATION })
+  return Promise.resolve(true)
 }
 
 function showConfirm(options) {
@@ -107,47 +119,34 @@ function showConfirm(options) {
 
 function showError(err, fallback = '操作失败') {
   const message = getErrorMessage(err, fallback)
-  if (isNetworkError(err)) {
-    showNetworkToast(message)
-    return Promise.resolve(false)
-  }
-  return showAlert(message)
+  const duration = isNetworkError(err) ? NETWORK_TOAST_DURATION : TOAST_DURATION
+  showMessage(message, { duration })
+  return Promise.resolve(false)
+}
+
+function showNetworkToast(message = '网络异常') {
+  showMessage(message, { duration: NETWORK_TOAST_DURATION })
 }
 
 function showToast(title, options) {
   const opts = typeof options === 'object' && options ? options : {}
-  const message = localizeMessage(typeof title === 'string' ? title : String(title || ''))
-  const icon = opts.icon || 'none'
-  let type = 'text'
-  if (icon === 'success') type = 'success'
-  if (icon === 'error' || icon === 'fail') type = 'fail'
-  if (icon === 'loading') type = 'loading'
-  const toastOptions = {
-    message,
-    type,
-    duration: opts.duration != null ? opts.duration : 2000,
-    position: 'middle',
-    forbidClick: !!opts.mask || type === 'loading',
+  if (opts.err && isNetworkError(opts.err)) {
+    showNetworkToast()
+    return
   }
-  runWithPage((page) => {
-    Toast(withPageContext(toastOptions, page))
+  const message = localizeMessage(typeof title === 'string' ? title : String(title || ''))
+  if (isNetworkError({ message })) {
+    showNetworkToast()
+    return
+  }
+  showMessage(message, {
+    duration: opts.duration != null ? opts.duration : TOAST_DURATION,
+    forbidClick: !!opts.mask,
   })
-}
-
-function showNetworkToast(message = '网络异常') {
-  showToast(message, { icon: 'none', duration: 2500 })
 }
 
 function showLoading(title = '加载中...') {
-  runWithPage((page) => {
-    Toast(withPageContext({
-      type: 'loading',
-      message: title,
-      duration: 0,
-      position: 'middle',
-      forbidClick: true,
-    }, page))
-  })
+  showMessage(title, { loading: true, forbidClick: true })
 }
 
 function hideLoading() {

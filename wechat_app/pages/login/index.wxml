@@ -12,7 +12,6 @@
       </view>
 
       <view wx:else class="action-box">
-        <view wx:if="{{error}}" class="error-text">{{error}}</view>
         <van-button
           type="danger"
           round
@@ -87,8 +86,6 @@
           bindinput="onRealNameInput"
         />
       </view>
-
-      <view wx:if="{{profileError}}" class="error-text">{{profileError}}</view>
 
       <van-button
         type="danger"

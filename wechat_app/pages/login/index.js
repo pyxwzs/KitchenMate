@@ -4,7 +4,6 @@ const API = require('../../utils/api')
 const PROFILE_GATE = require('../../utils/profileGate')
 const JOIN_ACTIONS = require('../../utils/joinActions')
 const { resolveAssetForDisplay } = require('../../utils/asset')
-const { getErrorMessage } = require('../../utils/error')
 const DIALOG = require('../../utils/dialog')
 
 Page({
@@ -12,11 +11,9 @@ Page({
     logoPath: CONFIG.logoPath,
     appName: CONFIG.appName,
     logging: false,
-    error: '',
     showProfilePopup: false,
     isLoggedIn: false,
     submitting: false,
-    profileError: '',
     avatarUrl: '',
     avatarTempPath: '',
     displayAvatar: '',
@@ -67,7 +64,6 @@ Page({
       showProfilePopup: true,
       isLoggedIn: true,
       logging: false,
-      profileError: '',
       nickname: user.nickname || '',
       realName: user.real_name || '',
       avatarUrl: displayAvatar || '',
@@ -112,7 +108,7 @@ Page({
       return
     }
 
-    this.setData({ logging: true, error: '', profileError: '' })
+    this.setData({ logging: true })
     const app = getApp()
     app._loginPromise = null
 
@@ -136,8 +132,8 @@ Page({
         logging: false,
         isLoggedIn: false,
         showProfilePopup: false,
-        error: getErrorMessage(err, '登录失败'),
       })
+      await DIALOG.showError(err, '登录失败')
     }
   },
 
@@ -220,7 +216,7 @@ Page({
       return
     }
 
-    this.setData({ submitting: true, profileError: '' })
+    this.setData({ submitting: true })
 
     try {
       if (needUploadAvatar) {
@@ -240,10 +236,8 @@ Page({
         this.goHome()
       }
     } catch (err) {
-      this.setData({
-        submitting: false,
-        profileError: getErrorMessage(err, '保存失败'),
-      })
+      this.setData({ submitting: false })
+      await DIALOG.showError(err, '保存失败')
     }
   },
 
