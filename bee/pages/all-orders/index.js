@@ -160,7 +160,7 @@ Page({
     if (!confirmed) return
 
     this.setData({ submitting: true })
-    wx.showLoading({ title: '确认中...', mask: true })
+    DIALOG.showLoading('确认中...')
     try {
       await ORDER.clearSession(currentFamilyId)
       DIALOG.showToast('本轮已结束', { icon: 'success' })
@@ -168,7 +168,7 @@ Page({
     } catch (err) {
       await DIALOG.showError(err, '确认失败')
     } finally {
-      wx.hideLoading()
+      DIALOG.hideLoading()
       this.setData({ submitting: false })
     }
   },

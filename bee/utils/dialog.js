@@ -1,6 +1,6 @@
 const Dialog = require('@vant/weapp/dialog/dialog').default
 const Toast = require('@vant/weapp/toast/toast').default
-const { getErrorMessage } = require('./error')
+const { getErrorMessage, isNetworkError, NETWORK_MESSAGE } = require('./error')
 
 Dialog.setDefaultOptions({
   width: '580rpx',
@@ -47,14 +47,44 @@ function localizeMessage(message) {
   return MESSAGE_MAP[trimmed] || trimmed
 }
 
+function getActivePage() {
+  const pages = getCurrentPages()
+  return pages.length ? pages[pages.length - 1] : null
+}
+
+function withPageContext(options, page) {
+  return {
+    ...options,
+    context() {
+      return page
+    },
+  }
+}
+
+/** 等待页面就绪后再弹出（解决 App.onLaunch 时 van-toast 尚未挂载） */
+function runWithPage(action, attempt = 0) {
+  const page = getActivePage()
+  if (page) {
+    action(page)
+    return
+  }
+  if (attempt < 40) {
+    setTimeout(() => runWithPage(action, attempt + 1), 50)
+  }
+}
+
 function showAlert(content, title = '提示') {
   const message = localizeMessage(typeof content === 'string' ? content : String(content || ''))
-  return Dialog.alert({
-    title,
-    message,
-    showCancelButton: false,
-    confirmButtonText: '确定',
-  }).catch(() => false)
+  return new Promise((resolve) => {
+    runWithPage((page) => {
+      Dialog.alert(withPageContext({
+        title,
+        message,
+        showCancelButton: false,
+        confirmButtonText: '确定',
+      }, page)).catch(() => false).then(resolve)
+    })
+  })
 }
 
 function showConfirm(options) {
@@ -63,16 +93,25 @@ function showConfirm(options) {
     : (options || {})
   const title = opts.title || '提示'
   const message = localizeMessage(opts.content || opts.message || '')
-  return Dialog.confirm({
-    title,
-    message,
-    confirmButtonText: opts.confirmText || '确定',
-    cancelButtonText: opts.cancelText || '取消',
-  }).then(() => true).catch(() => false)
+  return new Promise((resolve) => {
+    runWithPage((page) => {
+      Dialog.confirm(withPageContext({
+        title,
+        message,
+        confirmButtonText: opts.confirmText || '确定',
+        cancelButtonText: opts.cancelText || '取消',
+      }, page)).then(() => true).catch(() => false).then(resolve)
+    })
+  })
 }
 
 function showError(err, fallback = '操作失败') {
-  return showAlert(getErrorMessage(err, fallback))
+  const message = getErrorMessage(err, fallback)
+  if (isNetworkError(err)) {
+    showNetworkToast(message)
+    return Promise.resolve(false)
+  }
+  return showAlert(message)
 }
 
 function showToast(title, options) {
@@ -83,12 +122,36 @@ function showToast(title, options) {
   if (icon === 'success') type = 'success'
   if (icon === 'error' || icon === 'fail') type = 'fail'
   if (icon === 'loading') type = 'loading'
-  Toast({
+  const toastOptions = {
     message,
     type,
-    duration: opts.duration || 2000,
+    duration: opts.duration != null ? opts.duration : 2000,
     position: 'middle',
+    forbidClick: !!opts.mask || type === 'loading',
+  }
+  runWithPage((page) => {
+    Toast(withPageContext(toastOptions, page))
   })
+}
+
+function showNetworkToast(message = NETWORK_MESSAGE) {
+  showToast(message, { icon: 'none', duration: 2500 })
+}
+
+function showLoading(title = '加载中...') {
+  runWithPage((page) => {
+    Toast(withPageContext({
+      type: 'loading',
+      message: title,
+      duration: 0,
+      position: 'middle',
+      forbidClick: true,
+    }, page))
+  })
+}
+
+function hideLoading() {
+  Toast.clear()
 }
 
 function hideToast() {
@@ -100,6 +163,9 @@ module.exports = {
   showConfirm,
   showError,
   showToast,
+  showNetworkToast,
+  showLoading,
   hideToast,
+  hideLoading,
   localizeMessage,
 }

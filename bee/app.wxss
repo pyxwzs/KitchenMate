@@ -9,8 +9,11 @@ page,view,image,input {
 }
 
 /* ── 全局居中弹窗 / 提示 ── */
+page .van-dialog,
+page .van-popup.van-dialog,
 .km-dialog-wrap.van-dialog,
-.van-dialog.km-dialog {
+.van-dialog.km-dialog,
+.van-dialog {
   top: 50% !important;
   left: 50% !important;
   transform: translate3d(-50%, -50%, 0) !important;
@@ -21,19 +24,23 @@ page,view,image,input {
 }
 
 .km-dialog-wrap .van-dialog__header,
-.van-dialog.km-dialog .van-dialog__header {
+.van-dialog.km-dialog .van-dialog__header,
+page .van-dialog .van-dialog__header {
   padding-top: 40rpx !important;
   font-size: 34rpx !important;
   font-weight: 700 !important;
   color: #3D2817 !important;
+  text-align: center !important;
 }
 
 .km-dialog-wrap .van-dialog__message,
-.van-dialog.km-dialog .van-dialog__message {
+.van-dialog.km-dialog .van-dialog__message,
+page .van-dialog .van-dialog__message {
   padding: 16rpx 40rpx 32rpx !important;
   font-size: 28rpx !important;
   line-height: 1.65 !important;
   color: #666 !important;
+  text-align: center !important;
 }
 
 .km-dialog-wrap .van-dialog__footer--round-button,
@@ -61,25 +68,29 @@ page,view,image,input {
   background-color: rgba(40, 24, 8, 0.52) !important;
 }
 
+page .van-toast__container,
 .van-toast__container {
   top: 50% !important;
   left: 50% !important;
+  right: auto !important;
+  bottom: auto !important;
   transform: translate(-50%, -50%) !important;
 }
 
+page .van-toast,
 .van-toast.van-toast--middle,
 .van-toast.van-toast--text,
-.van-toast.van-toast--icon {
+.van-toast.van-toast--icon,
+.van-toast.van-toast--top,
+.van-toast.van-toast--bottom {
   max-width: 560rpx !important;
   padding: 28rpx 40rpx !important;
   border-radius: 24rpx !important;
   font-size: 28rpx !important;
   line-height: 1.5 !important;
+  text-align: center !important;
   background: rgba(45, 30, 18, 0.88) !important;
   box-shadow: 0 16rpx 48rpx rgba(0, 0, 0, 0.2);
-}
-
-.van-toast--middle {
   transform: none !important;
 }
 .badge {

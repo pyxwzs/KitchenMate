@@ -39,14 +39,14 @@ App({
       success(res) {
         if (res.networkType === 'none') {
           that.globalData.isConnected = false
-          DIALOG.showToast('网络异常', { icon: 'none' })
+          DIALOG.showNetworkToast()
         }
       }
     })
     wx.onNetworkStatusChange(function(res) {
       if (!res.isConnected) {
         that.globalData.isConnected = false
-        DIALOG.showToast('网络异常', { icon: 'none' })
+        DIALOG.showNetworkToast()
       } else {
         that.globalData.isConnected = true
         DIALOG.hideToast()

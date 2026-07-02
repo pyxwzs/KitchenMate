@@ -100,7 +100,7 @@ Page({
       is_active: true,
     }
     try {
-      wx.showLoading({ title: '保存中...', mask: true })
+      DIALOG.showLoading('保存中...')
       let dish
       if (dishEditId) {
         dish = await MENU.updateDish(dishEditId, payload)
@@ -110,12 +110,12 @@ Page({
       if (dishImageTempPath) {
         await MENU.uploadDishImage(dish.id, dishImageTempPath)
       }
-      wx.hideLoading()
+      DIALOG.hideLoading()
       this.setData({ dishDialogShow: false })
       DIALOG.showToast('已保存', { icon: 'success' })
       this.loadMenu()
     } catch (err) {
-      wx.hideLoading()
+      DIALOG.hideLoading()
       DIALOG.showToast(err.message || '保存失败', { icon: 'none' })
     }
   },
