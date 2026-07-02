@@ -67,30 +67,6 @@ App({
     })
   },
 
-  initLanguage(_this) {
-    _this.setData({
-      language: i18n.getLanguage(),
-      $t: i18n.$t(),
-    })
-  },
-
-  changeLang(_this) {
-    const langs = i18n.langs
-    const nameArray = langs.map(ele => ele.name)
-    wx.showActionSheet({
-      itemList: nameArray,
-      success: (e) => {
-        const lang = langs[e.tapIndex]
-        wx.setStorageSync('Language', lang.code)
-        _this.setData({
-          language: i18n.getLanguage(),
-          $t: i18n.$t(),
-        })
-        this.setTabBarLanguage()
-      }
-    })
-  },
-
   setTabBarLanguage() {
     i18n.setTabBarLanguage()
   },

@@ -1,7 +1,6 @@
 {
   "navigationBarTitleText": "点餐",
   "usingComponents": {
-    "van-button": "@vant/weapp/button/index",
     "van-icon": "@vant/weapp/icon/index",
     "van-sticky": "@vant/weapp/sticky/index",
     "van-popup": "@vant/weapp/popup/index",

@@ -54,14 +54,4 @@ module.exports = {
   setTabBarLanguage: setTabBarLanguage,
   getLanguage: getLanguage,
   $t: $t,
-  langs: [
-    {
-      name: '简体中文',
-      code: 'zh_CN'
-    },
-    {
-      name: 'English',
-      code: 'en'
-    }
-  ]
 }

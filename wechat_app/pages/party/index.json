@@ -2,7 +2,6 @@
   "navigationBarTitleText": "聚会模式",
   "usingComponents": {
     "van-icon": "@vant/weapp/icon/index",
-    "van-button": "@vant/weapp/button/index",
     "van-dialog": "@vant/weapp/dialog/index",
     "van-popup": "@vant/weapp/popup/index"
   }

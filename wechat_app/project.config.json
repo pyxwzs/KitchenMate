@@ -47,10 +47,19 @@
   "simulatorType": "wechat",
   "simulatorPluginLibVersion": {},
   "condition": {
-    "search": { "list": [] },
-    "conversation": { "list": [] },
-    "game": { "currentL": -1, "list": [] },
-    "miniprogram": { "list": [] }
+    "search": {
+      "list": []
+    },
+    "conversation": {
+      "list": []
+    },
+    "game": {
+      "currentL": -1,
+      "list": []
+    },
+    "miniprogram": {
+      "list": []
+    }
   },
   "editorSetting": {
     "tabIndent": "insertSpaces",
@@ -59,7 +68,10 @@
   "appid": "wxdfbe295ad2829708",
   "packOptions": {
     "ignore": [
-      { "type": "folder", "value": "node_modules" }
+      {
+        "value": "node_modules",
+        "type": "folder"
+      }
     ],
     "include": []
   },

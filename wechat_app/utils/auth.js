@@ -18,10 +18,6 @@ async function checkSession() {
   })
 }
 
-async function bindSeller() {
-  // KitchenMate 不使用分销推荐人逻辑
-}
-
 function isDevUser(user) {
   return !!(user && user.openid && String(user.openid).startsWith('dev-user'))
 }
@@ -65,21 +61,6 @@ async function wxaCode() {
   })
 }
 
-async function loginWithKitchenMate(page) {
-  try {
-    await authorize()
-    if (page) {
-      page.onShow()
-    }
-  } catch (err) {
-    await DIALOG.showAlert(getErrorMessage(err, '登录失败'), $t.common.loginFail)
-  }
-}
-
-async function login(page) {
-  return loginWithKitchenMate(page)
-}
-
 async function authorize() {
   if (CONFIG.useDevLogin) {
     return API.devLogin()
@@ -104,39 +85,7 @@ function loginOut() {
   wx.removeStorageSync('loginType')
 }
 
-async function checkAndAuthorize(scope) {
-  return new Promise((resolve, reject) => {
-    wx.getSetting({
-      success(res) {
-        if (!res.authSetting[scope]) {
-          wx.authorize({
-            scope: scope,
-            success() {
-              resolve()
-            },
-            fail(e) {
-              console.error(e)
-              DIALOG.showAlert($t.common.authorizeRequired, $t.common.authorize).then(() => {
-                wx.openSetting()
-              })
-            },
-          })
-        } else {
-          resolve()
-        }
-      },
-      fail(e) {
-        console.error(e)
-        reject(e)
-      },
-    })
-  })
-}
-
-/**
- * 仅静默登录（wx.login + 换 token），不检查资料完整性。
- * 适用于扫码加入聚会的来宾场景。
- */
+/** 仅静默登录（wx.login + 换 token），不检查资料完整性。 */
 async function silentLogin() {
   const isLogined = await checkHasLogined()
   if (isLogined) return
@@ -146,10 +95,7 @@ async function silentLogin() {
 module.exports = {
   checkHasLogined,
   wxaCode,
-  login,
   loginOut,
-  checkAndAuthorize,
   authorize,
-  bindSeller,
   silentLogin,
 }
