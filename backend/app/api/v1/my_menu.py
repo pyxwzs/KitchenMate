@@ -13,8 +13,8 @@ def get_my_menu(current_user: CurrentUser, db: DbSession) -> dict:
 
 
 @router.post("/dishes", response_model=DishResponse)
-def create_dish(body: DishCreateRequest, current_user: CurrentUser, db: DbSession):
-    return menu_service.create_dish(
+async def create_dish(body: DishCreateRequest, current_user: CurrentUser, db: DbSession):
+    dish = menu_service.create_dish(
         db,
         current_user,
         body.name,
@@ -23,22 +23,37 @@ def create_dish(body: DishCreateRequest, current_user: CurrentUser, db: DbSessio
         body.sort_order,
         body.is_active,
     )
+    await menu_service.broadcast_menu_changed(
+        db,
+        current_user.id,
+        dish_id=dish.id,
+        updated_at=dish.updated_at,
+    )
+    return dish
 
 
 @router.patch("/dishes/{dish_id}", response_model=DishResponse)
-def update_dish(
+async def update_dish(
     dish_id: int,
     body: DishUpdateRequest,
     current_user: CurrentUser,
     db: DbSession,
 ):
     data = body.model_dump(exclude_unset=True)
-    return menu_service.update_dish(db, current_user.id, dish_id, **data)
+    dish = menu_service.update_dish(db, current_user.id, dish_id, **data)
+    await menu_service.broadcast_menu_changed(
+        db,
+        current_user.id,
+        dish_id=dish.id,
+        updated_at=dish.updated_at,
+    )
+    return dish
 
 
 @router.delete("/dishes/{dish_id}")
-def delete_dish(dish_id: int, current_user: CurrentUser, db: DbSession):
+async def delete_dish(dish_id: int, current_user: CurrentUser, db: DbSession):
     menu_service.delete_dish(db, current_user.id, dish_id)
+    await menu_service.broadcast_menu_changed(db, current_user.id, dish_id=dish_id)
     return {"message": "deleted"}
 
 
@@ -49,4 +64,11 @@ async def upload_dish_image(
     db: DbSession,
     file: UploadFile = File(...),
 ):
-    return await menu_service.upload_dish_image(db, current_user.id, dish_id, file)
+    dish = await menu_service.upload_dish_image(db, current_user.id, dish_id, file)
+    await menu_service.broadcast_menu_changed(
+        db,
+        current_user.id,
+        dish_id=dish.id,
+        updated_at=dish.updated_at,
+    )
+    return dish

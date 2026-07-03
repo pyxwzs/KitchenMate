@@ -2,6 +2,7 @@ const CONFIG = require('../../config.js')
 const API = require('../../utils/api')
 const { resolveAssetForDisplay } = require('../../utils/asset')
 const DIALOG = require('../../utils/dialog')
+const CACHE_CLEAR = require('../../utils/cacheClear')
 
 Page({
   data: {
@@ -93,12 +94,13 @@ Page({
 
   async clearStorage() {
     const confirmed = await DIALOG.showConfirm({
-      title: '提示',
-      content: '确定清除缓存并重新登录吗？',
-      confirmText: '确定',
+      title: '清除缓存',
+      content: '将清除本机全部本地数据并退出登录，包括：登录状态、家庭/聚会选择、菜单与所有菜品图片缓存。清除后需重新登录。',
+      confirmText: '全部清除',
+      cancelText: '取消',
     })
     if (!confirmed) return
-    wx.clearStorageSync()
+    CACHE_CLEAR.clearAllLocalData()
     wx.reLaunch({ url: '/pages/login/index' })
   },
 })

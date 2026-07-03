@@ -19,21 +19,32 @@ Page({
   },
 
   onShow() {
+    if (this._ready) {
+      this.loadMenu({ silent: true })
+      this.loadMenu({ silent: true, force: true }).catch(() => {})
+      return
+    }
     this.loadMenu()
   },
 
-  async loadMenu() {
-    this.setData({ loading: true })
+  async loadMenu(options = {}) {
+    const { silent = false, force = false, refreshDishIds = [] } = options
+    if (!silent) {
+      this.setData({ loading: true })
+    }
     try {
-      const raw = await MENU.getMyMenu()
-      const menu = await MENU.formatMyMenuAsync(raw)
+      const raw = await MENU.getMyMenu({ force })
+      const menu = await MENU.formatMyMenuAsync(raw, { refreshDishIds })
       this.setData({
         dishes: menu.dishes || [],
         loading: false,
       })
+      this._ready = true
     } catch (err) {
       this.setData({ loading: false })
-      await DIALOG.showError(err, '加载失败')
+      if (!silent) {
+        await DIALOG.showError(err, '加载失败')
+      }
     }
   },
 
@@ -107,13 +118,18 @@ Page({
       } else {
         dish = await MENU.createDish(payload)
       }
+      let refreshDishIds = []
       if (dishImageTempPath) {
-        await MENU.uploadDishImage(dish.id, dishImageTempPath)
+        const uploaded = await MENU.uploadDishImage(dish.id, dishImageTempPath)
+        if (uploaded && uploaded.id) {
+          refreshDishIds = [uploaded.id]
+        }
       }
       DIALOG.hideLoading()
       this.setData({ dishDialogShow: false })
       DIALOG.showToast('已保存', { icon: 'success' })
-      this.loadMenu()
+      MENU.invalidateAllMenus()
+      this.loadMenu({ force: true, refreshDishIds })
     } catch (err) {
       DIALOG.hideLoading()
       await DIALOG.showError(err, '保存失败')
@@ -125,10 +141,11 @@ Page({
     const isActive = e.detail.value
     try {
       await MENU.updateDish(dish.id, { is_active: isActive })
-      this.loadMenu()
+      MENU.invalidateAllMenus()
+      this.loadMenu({ force: true })
     } catch (err) {
       await DIALOG.showError(err, '更新失败')
-      this.loadMenu()
+      this.loadMenu({ force: true })
     }
   },
 
@@ -143,7 +160,8 @@ Page({
     try {
       await MENU.deleteDish(dishId)
       DIALOG.showToast('已删除', { icon: 'success' })
-      this.loadMenu()
+      MENU.invalidateAllMenus()
+      this.loadMenu({ force: true })
     } catch (err) {
       await DIALOG.showError(err, '删除失败')
     }

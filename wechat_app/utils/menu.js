@@ -1,10 +1,13 @@
 const CONFIG = require('../config.js')
 const request = require('./request')
 const API = require('./api')
-const { resolveAssetForDisplay } = require('./asset')
+const { resolveAssetForDisplay, getCachedDisplayPath, evictAssetCache, buildCacheUrl } = require('./asset')
+const DISH_IMAGE = require('./dishImageCache')
 const { getErrorMessage, isNetworkError } = require('./error')
 
 const CURRENT_FAMILY_KEY = 'currentFamilyId'
+const familyMenuCache = Object.create(null)
+let myMenuCache = null
 
 function getCurrentFamilyId() {
   return wx.getStorageSync(CURRENT_FAMILY_KEY) || null
@@ -14,12 +17,45 @@ function setCurrentFamilyId(familyId) {
   wx.setStorageSync(CURRENT_FAMILY_KEY, familyId)
 }
 
-function getFamilyMenu(familyId) {
-  return request({ url: `/families/${familyId}/menu`, method: 'GET' })
+function getFamilyMenu(familyId, options = {}) {
+  const { force = false } = options
+  if (!force && familyMenuCache[familyId]) {
+    return Promise.resolve(familyMenuCache[familyId])
+  }
+  return request({ url: `/families/${familyId}/menu`, method: 'GET' }).then((raw) => {
+    familyMenuCache[familyId] = raw
+    return raw
+  })
 }
 
-function getMyMenu() {
-  return request({ url: '/menu/my', method: 'GET' })
+function getMyMenu(options = {}) {
+  const { force = false } = options
+  if (!force && myMenuCache) {
+    return Promise.resolve(myMenuCache)
+  }
+  return request({ url: '/menu/my', method: 'GET' }).then((raw) => {
+    myMenuCache = raw
+    return raw
+  })
+}
+
+function invalidateFamilyMenu(familyId) {
+  if (familyId) {
+    delete familyMenuCache[familyId]
+    return
+  }
+  Object.keys(familyMenuCache).forEach((id) => {
+    delete familyMenuCache[id]
+  })
+}
+
+function invalidateMyMenu() {
+  myMenuCache = null
+}
+
+function invalidateAllMenus() {
+  invalidateMyMenu()
+  invalidateFamilyMenu()
 }
 
 function createDish(data) {
@@ -59,7 +95,11 @@ function uploadDishImage(dishId, filePath) {
           return
         }
         if (res.statusCode >= 200 && res.statusCode < 300) {
-          resolve(formatDishImage(data))
+          const dish = formatDishImage(data)
+          if (dish && dish.id) {
+            DISH_IMAGE.clearDish(dish.id, dish.image_url)
+          }
+          resolve(dish)
           return
         }
         const detail = data.detail
@@ -92,31 +132,70 @@ function formatDishImage(dish) {
   }
 }
 
-async function resolveDishImages(dishes) {
-  return Promise.all(
-    (dishes || []).map(async (dish) => ({
-      ...dish,
-      imageUrl: await resolveAssetForDisplay(dish.image_url),
-    }))
-  )
+function dishImageVersion(dish) {
+  return (dish && dish.updated_at) || ''
 }
 
-async function formatFamilyMenuAsync(menu) {
+function dishWithDisplayImage(dish, options = {}) {
+  if (!dish) {
+    return dish
+  }
+  const version = dishImageVersion(dish)
+  const { refreshImage = false } = options
+  const cached = !refreshImage && getCachedDisplayPath(dish.image_url, version)
+  const fallback = buildCacheUrl(dish.image_url, version)
+  return {
+    ...dish,
+    imageUrl: cached || fallback || '',
+  }
+}
+
+async function resolveDishImages(dishes, options = {}) {
+  const refreshIds = new Set((options.refreshDishIds || []).map(Number))
+  const list = dishes || []
+  const result = list.map((dish) => dishWithDisplayImage(dish, {
+    refreshImage: refreshIds.has(Number(dish.id)),
+  }))
+  const pending = []
+  list.forEach((dish, index) => {
+    if (!dish || !dish.image_url) {
+      return
+    }
+    const version = dishImageVersion(dish)
+    const refreshImage = refreshIds.has(Number(dish.id))
+    if (!refreshImage && getCachedDisplayPath(dish.image_url, version)) {
+      return
+    }
+    pending.push(
+      resolveAssetForDisplay(dish.image_url, { force: refreshImage, version }).then((url) => {
+        if (url) {
+          result[index] = Object.assign({}, result[index], { imageUrl: url })
+        }
+      })
+    )
+  })
+  if (pending.length) {
+    await Promise.all(pending)
+  }
+  return result
+}
+
+async function formatFamilyMenuAsync(menu, options = {}) {
   if (!menu) {
     return menu
   }
   return {
     ...menu,
-    dishes: await resolveDishImages(menu.dishes),
+    dishes: await resolveDishImages(menu.dishes, options),
   }
 }
 
-async function formatMyMenuAsync(menu) {
+async function formatMyMenuAsync(menu, options = {}) {
   if (!menu) {
     return { dishes: [] }
   }
   return {
-    dishes: await resolveDishImages(menu.dishes),
+    dishes: await resolveDishImages(menu.dishes, options),
   }
 }
 
@@ -195,6 +274,9 @@ module.exports = {
   setCurrentFamilyId,
   getFamilyMenu,
   getMyMenu,
+  invalidateFamilyMenu,
+  invalidateMyMenu,
+  invalidateAllMenus,
   createDish,
   updateDish,
   deleteDish,

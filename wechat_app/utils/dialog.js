@@ -11,9 +11,9 @@ Dialog.setDefaultOptions({
   messageAlign: 'center',
   transition: 'scale',
   overlay: true,
-  confirmButtonColor: '#E8A060',
-  cancelButtonColor: '#C4A57B',
-  className: ' km-dialog-dark',
+  confirmButtonColor: '#FFFFFF',
+  cancelButtonColor: '#A08B6F',
+  className: 'km-dialog',
   confirmButtonText: '确定',
   cancelButtonText: '取消',
 })

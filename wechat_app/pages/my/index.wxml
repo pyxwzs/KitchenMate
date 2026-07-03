@@ -80,15 +80,6 @@
             <van-icon name="arrow" size="32rpx" color="#999" />
           </view>
         </navigator>
-        <navigator url="/pages/my/feedback" hover-class="none">
-          <view class="menu-list-item">
-            <view class="item-left">
-              <van-icon name="chat-o" size="40rpx" color="#888" />
-              <text class="list-text">意见反馈</text>
-            </view>
-            <van-icon name="arrow" size="32rpx" color="#999" />
-          </view>
-        </navigator>
         <view class="menu-list-item" bindtap="clearStorage">
           <view class="item-left">
             <van-icon name="delete-o" size="40rpx" color="#888" />

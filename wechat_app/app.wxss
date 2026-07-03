@@ -53,63 +53,112 @@ page .van-toast .van-loading__spinner,
   color: #fff !important;
 }
 
-/* ── 确认框（需点确定/取消时）同色系深色居中 ── */
+/* ── 确认框：白卡片 + 暖色按钮，与主界面一致 ── */
 page .van-dialog,
 page .van-popup.van-dialog,
-.km-dialog-dark.van-dialog,
+.km-dialog.van-dialog,
 .van-dialog.km-dialog {
   top: 50% !important;
   left: 50% !important;
   transform: translate3d(-50%, -50%, 0) !important;
   width: 580rpx !important;
-  border-radius: 28rpx !important;
+  border-radius: 32rpx !important;
   overflow: hidden;
-  background: rgba(45, 30, 18, 0.92) !important;
-  box-shadow: 0 24rpx 64rpx rgba(0, 0, 0, 0.28);
+  background: #fff !important;
+  box-shadow: 0 24rpx 64rpx rgba(139, 115, 85, 0.18);
 }
 
-.km-dialog-dark .van-dialog__header,
+.km-dialog .van-dialog__header,
 .van-dialog.km-dialog .van-dialog__header,
 page .van-dialog .van-dialog__header {
-  padding-top: 40rpx !important;
+  padding-top: 44rpx !important;
   font-size: 34rpx !important;
   font-weight: 700 !important;
-  color: #fff !important;
+  color: #3D2817 !important;
   text-align: center !important;
 }
 
-.km-dialog-dark .van-dialog__message,
+.km-dialog .van-dialog__message,
 .van-dialog.km-dialog .van-dialog__message,
-page .van-dialog .van-dialog__message {
-  padding: 16rpx 40rpx 32rpx !important;
+page .van-dialog .van-dialog__message,
+.km-dialog .van-dialog__message--round-button,
+.van-dialog.km-dialog .van-dialog__message--round-button,
+page .van-dialog .van-dialog__message--round-button {
+  padding: 12rpx 48rpx 36rpx !important;
   font-size: 28rpx !important;
   line-height: 1.65 !important;
-  color: rgba(255, 255, 255, 0.88) !important;
+  color: #A08B6F !important;
   text-align: center !important;
 }
 
-.km-dialog-dark .van-dialog__footer--round-button,
-.van-dialog.km-dialog .van-dialog__footer--round-button {
-  padding: 8rpx 32rpx 36rpx !important;
+.km-dialog .van-dialog__message-text,
+.van-dialog.km-dialog .van-dialog__message-text,
+page .van-dialog .van-dialog__message-text {
+  color: #A08B6F !important;
 }
 
-.km-dialog-dark .van-dialog__confirm,
+.km-dialog .van-dialog__footer--round-button,
+.van-dialog.km-dialog .van-dialog__footer--round-button {
+  padding: 0 40rpx 40rpx !important;
+  gap: 24rpx !important;
+}
+
+.km-dialog .van-dialog__footer--round-button .van-goods-action-button,
+.van-dialog.km-dialog .van-dialog__footer--round-button .van-goods-action-button {
+  flex: 1 !important;
+  height: 80rpx !important;
+  line-height: 80rpx !important;
+  margin: 0 !important;
+  --button-border-radius: 40rpx !important;
+}
+
+.km-dialog .van-dialog__footer--round-button .van-goods-action-button--first,
+.km-dialog .van-dialog__footer--round-button .van-goods-action-button--last,
+.van-dialog.km-dialog .van-dialog__footer--round-button .van-goods-action-button--first,
+.van-dialog.km-dialog .van-dialog__footer--round-button .van-goods-action-button--last {
+  border-radius: 40rpx !important;
+}
+
+.km-dialog .van-dialog__cancel .van-goods-action-button__inner,
+.van-dialog.km-dialog .van-dialog__cancel .van-goods-action-button__inner,
+.km-dialog .van-dialog__cancel.van-goods-action-button,
+.van-dialog.km-dialog .van-dialog__cancel.van-goods-action-button {
+  background: #F7F2EC !important;
+  color: #A08B6F !important;
+}
+
+.km-dialog .van-dialog__confirm,
 .van-dialog.km-dialog .van-dialog__confirm,
-.km-dialog-dark .van-goods-action-button--danger,
+.km-dialog .van-goods-action-button--danger,
 .van-dialog.km-dialog .van-goods-action-button--danger {
   background: linear-gradient(135deg, #E8A060, #C87E40) !important;
   border: none !important;
   color: #fff !important;
   font-weight: 600 !important;
+  box-shadow: 0 8rpx 24rpx rgba(200, 126, 64, 0.32) !important;
 }
 
-.km-dialog-dark .van-dialog__cancel,
+.km-dialog .van-dialog__cancel,
 .van-dialog.km-dialog .van-dialog__cancel {
-  color: #C4A57B !important;
+  color: #A08B6F !important;
   font-weight: 500 !important;
-  background: rgba(255, 255, 255, 0.12) !important;
+  background: #F7F2EC !important;
+  border: none !important;
+}
+
+.km-dialog .van-dialog__cancel .van-button__text,
+.van-dialog.km-dialog .van-dialog__cancel .van-button__text {
+  color: #A08B6F !important;
+  font-size: 30rpx !important;
+}
+
+.km-dialog .van-dialog__confirm .van-button__text,
+.van-dialog.km-dialog .van-dialog__confirm .van-button__text {
+  color: #fff !important;
+  font-size: 30rpx !important;
+  font-weight: 600 !important;
 }
 
 .van-overlay {
-  background-color: rgba(40, 24, 8, 0.52) !important;
+  background-color: rgba(61, 40, 23, 0.45) !important;
 }

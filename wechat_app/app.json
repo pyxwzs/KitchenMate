@@ -10,7 +10,6 @@
     "pages/family/join",
     "pages/party/index",
     "pages/my/dishes",
-    "pages/my/feedback",
     "pages/about/index"
   ],
   "window": {

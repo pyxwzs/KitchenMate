@@ -6,6 +6,9 @@ const ORDER_WS = require('../../utils/orderWs')
 const PARTY = require('../../utils/party')
 const DIALOG = require('../../utils/dialog')
 const DISH_IMAGE = require('../../utils/dishImageCache')
+const MENU_SYNC = require('../../utils/menuSync')
+
+const EMPTY_SUMMARY = { total_dishes: 0, dish_totals: [], by_user: [] }
 
 Page({
   data: {
@@ -66,23 +69,33 @@ Page({
     ORDER_WS.disconnect()
     ORDER_WS.connect(
       familyId,
-      (msg) => {
-        if (msg.type === 'orders_updated') {
-          this.loadTableSummary(true)
-        }
-      },
+      (msg) => this.onWsMessage(msg),
       () => {}
     )
   },
 
+  onWsMessage(msg) {
+    if (msg.type === 'orders_updated') {
+      this.loadTableSummary(true)
+      return
+    }
+    if (!MENU_SYNC.handleMenuUpdated(this, msg)) {
+      return
+    }
+    this.loadMenu({ silent: true, force: true })
+      .then(() => this.loadTableSummary(true))
+      .catch(() => {})
+  },
+
   async bootstrap() {
-    this.setData({ loading: true })
     try {
       const families = await FAMILY.listFamilies()
       const ctx = await PARTY.resolveOrderContext(families)
 
       if (!ctx.currentFamilyId) {
         ORDER_WS.disconnect()
+        this._menuReady = false
+        this._lastSummary = EMPTY_SUMMARY
         this.setData({
           loading: false,
           families: ctx.families,
@@ -90,6 +103,13 @@ Page({
           inPartyMode: false,
         })
         return
+      }
+
+      const familyChanged = Number(ctx.currentFamilyId) !== Number(this.data.currentFamilyId)
+      const quiet = this._menuReady && !familyChanged && !!this.data.currentFamilyId
+
+      if (!quiet) {
+        this.setData({ loading: true })
       }
 
       this.setData({
@@ -103,11 +123,24 @@ Page({
         canSwitchFamily: ctx.canSwitchFamily,
       })
       this.connectWs(ctx.currentFamilyId)
-      await Promise.all([this.loadMenu(), this.loadTableSummary(false)])
+      await this.loadMenu({ silent: quiet, force: !quiet })
+      await this.loadTableSummary(quiet)
+      this._menuReady = true
+      if (quiet) {
+        this.refreshMenuInBackground()
+      }
     } catch (err) {
       this.setData({ loading: false })
       await DIALOG.showError(err, '加载失败')
     }
+  },
+
+  refreshMenuInBackground() {
+    const { currentFamilyId } = this.data
+    if (!currentFamilyId) return
+    this.loadMenu({ silent: true, force: true })
+      .then(() => this.loadTableSummary(true))
+      .catch(() => {})
   },
 
   applySessionToDishes(dishes, summary) {
@@ -133,6 +166,7 @@ Page({
     try {
       const raw = await ORDER.getOrderSummary(currentFamilyId)
       const summary = await ORDER.resolveSummaryImages(raw)
+      this._lastSummary = summary
       this.applySessionSummary(summary)
     } catch (err) {
       if (!silent) {
@@ -158,32 +192,33 @@ Page({
     }
   },
 
-  async loadMenu() {
-    const { currentFamilyId } = this.data
+  async loadMenu(options = {}) {
+    const { silent = false, force = false } = options
+    const { currentFamilyId, menuFilterMemberId } = this.data
+    if (!currentFamilyId) return
     try {
-      const raw = await MENU.getFamilyMenu(currentFamilyId)
+      const raw = await MENU.getFamilyMenu(currentFamilyId, { force })
       const menu = await MENU.formatFamilyMenuAsync(raw)
       DISH_IMAGE.registerDishes(menu.dishes)
       const menuMembers = menu.menu_members || menu.cooks || []
-      let dishes = menu.dishes || []
-      const rawSummary = await ORDER.getOrderSummary(currentFamilyId).catch(() => null)
-      const summary = rawSummary
-        ? await ORDER.resolveSummaryImages(rawSummary)
-        : { total_dishes: 0, dish_totals: [], by_user: [] }
-      dishes = this.applySessionToDishes(dishes, summary)
-      const cartItems = ORDER.flattenTableCartItems(summary, this.data.myUserId)
+      const dishes = this.applySessionToDishes(
+        menu.dishes || [],
+        this._lastSummary || EMPTY_SUMMARY
+      )
+      const filterId = silent ? menuFilterMemberId : ''
       this.setData(Object.assign({
         menuSubtitle: MENU.buildMenuSubtitle(menuMembers, menu.is_party_menu),
         dishes,
         menuEmpty: dishes.length === 0,
-        cartItems,
-        cartCount: summary.total_dishes || 0,
         loading: false,
-        menuFilterMemberId: '',
-      }, this.buildMenuViewState(dishes, menuMembers, '')))
+        menuFilterMemberId: filterId,
+        menuMembers,
+      }, this.buildMenuViewState(dishes, menuMembers, filterId)))
     } catch (err) {
       this.setData({ loading: false })
-      await DIALOG.showError(err, '菜单加载失败')
+      if (!silent) {
+        await DIALOG.showError(err, '菜单加载失败')
+      }
     }
   },
 
@@ -342,6 +377,8 @@ Page({
     FAMILY_SWITCH.pickFamily(families, currentFamilyId).then(async (picked) => {
       if (!picked || Number(picked.id) === Number(currentFamilyId)) return
       FAMILY_SWITCH.applyFamilySwitch(picked)
+      this._menuReady = false
+      this._lastSummary = EMPTY_SUMMARY
       this.setData({
         loading: true,
         currentFamilyId: picked.id,
@@ -353,7 +390,9 @@ Page({
         menuFilterMemberId: '',
       })
       this.connectWs(picked.id)
-      await Promise.all([this.loadMenu(), this.loadTableSummary(false)])
+      await this.loadMenu({ force: true })
+      await this.loadTableSummary(false)
+      this._menuReady = true
     })
   },
 

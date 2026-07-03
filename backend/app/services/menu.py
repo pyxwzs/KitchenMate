@@ -1,6 +1,7 @@
 from datetime import UTC, datetime
 
 from fastapi import UploadFile
+from sqlalchemy import or_
 from sqlalchemy.orm import Session, joinedload
 
 from app.core.exceptions import not_found
@@ -188,6 +189,43 @@ async def upload_dish_image(db: Session, user_id: int, dish_id: int, file: Uploa
     if not user:
         raise not_found("User")
     dish.image_url = await save_dish_image(file, user.openid, dish.id)
+    dish.updated_at = datetime.now(UTC)
     db.commit()
     db.refresh(dish)
     return dish
+
+
+def family_ids_for_menu_broadcast(db: Session, user_id: int) -> list[int]:
+    """用户改菜单后需通知的家庭：其所在家庭 + 其参与的进行中聚会所在家庭。"""
+    family_ids: set[int] = set()
+    for (family_id,) in db.query(FamilyMember.family_id).filter(FamilyMember.user_id == user_id):
+        family_ids.add(family_id)
+    party_family_rows = (
+        db.query(Party.family_id)
+        .outerjoin(PartyGuest, PartyGuest.party_id == Party.id)
+        .filter(Party.status == PartyStatus.ACTIVE)
+        .filter(or_(Party.host_user_id == user_id, PartyGuest.user_id == user_id))
+        .distinct()
+        .all()
+    )
+    for (family_id,) in party_family_rows:
+        family_ids.add(family_id)
+    return list(family_ids)
+
+
+async def broadcast_menu_changed(
+    db: Session,
+    user_id: int,
+    *,
+    dish_id: int | None = None,
+    updated_at: datetime | None = None,
+) -> None:
+    from app.ws.order_hub import notify_menu_updated
+
+    updated_at_text = updated_at.isoformat() if updated_at else None
+    for family_id in family_ids_for_menu_broadcast(db, user_id):
+        await notify_menu_updated(
+            family_id,
+            dish_id=dish_id,
+            updated_at=updated_at_text,
+        )

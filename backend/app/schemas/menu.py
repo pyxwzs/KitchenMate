@@ -1,3 +1,5 @@
+from datetime import datetime
+
 from pydantic import BaseModel, Field
 
 from app.schemas.common import ORMBase
@@ -27,6 +29,7 @@ class DishResponse(ORMBase):
     image_url: str | None = None
     sort_order: int
     is_active: bool
+    updated_at: datetime
 
 
 class CookInfo(BaseModel):

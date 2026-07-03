@@ -145,8 +145,8 @@
       </block>
     </view>
 
-    <!-- 底部本桌购物车栏（弹窗打开时隐藏，避免遮挡） -->
-    <view wx:if="{{cartCount > 0 && !cartShow}}" class="cart-bar">
+    <!-- 底部本桌购物车栏（加菜/购物车弹窗打开时隐藏，避免遮挡） -->
+    <view wx:if="{{cartCount > 0 && !cartShow && !addSheetShow}}" class="cart-bar">
       <view class="cart-bar-left" bindtap="openCart">
         <view class="cart-icon-wrap">
           <van-icon name="shopping-cart-o" size="44rpx" color="#fff" />
@@ -157,7 +157,7 @@
       <view class="cart-bar-btn view-only" catchtap="openCart">查看</view>
     </view>
 
-    <view wx:if="{{!cartShow}}" class="fab" bindtap="goMyDishes">
+    <view wx:if="{{!cartShow && !addSheetShow}}" class="fab" bindtap="goMyDishes">
       <van-icon name="edit" size="36rpx" color="#fff" />
       <text class="fab-label">管理</text>
     </view>
@@ -169,8 +169,8 @@
     show="{{addSheetShow}}"
     position="bottom"
     round
+    z-index="{{1010}}"
     bind:close="closeAddSheet"
-    custom-style="padding-bottom: env(safe-area-inset-bottom);"
   >
     <view class="add-sheet" wx:if="{{addSheetDish}}">
       <view class="add-sheet-header">

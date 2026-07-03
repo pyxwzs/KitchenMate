@@ -6,6 +6,7 @@ const ORDER_WS = require('../../utils/orderWs')
 const PARTY = require('../../utils/party')
 const DIALOG = require('../../utils/dialog')
 const DISH_IMAGE = require('../../utils/dishImageCache')
+const MENU_SYNC = require('../../utils/menuSync')
 
 Page({
   data: {
@@ -52,15 +53,25 @@ Page({
     ORDER_WS.disconnect()
     ORDER_WS.connect(
       familyId,
-      (msg) => {
-        if (msg.type === 'orders_updated') {
-          this.loadSummary(true)
-        }
-      },
+      (msg) => this.onWsMessage(msg),
       (connected) => {
         this.setData({ wsConnected: connected })
       }
     )
+  },
+
+  onWsMessage(msg) {
+    if (msg.type === 'orders_updated') {
+      this.loadSummary(true)
+      return
+    }
+    if (!MENU_SYNC.handleMenuUpdated(this, msg)) {
+      return
+    }
+    Promise.all([
+      this.loadCookInfo({ force: true }),
+      this.loadSummary(true),
+    ]).catch(() => {})
   },
 
   async bootstrap() {
@@ -93,10 +104,11 @@ Page({
     }
   },
 
-  async loadCookInfo() {
+  async loadCookInfo(options = {}) {
+    const { force = false } = options
     const { currentFamilyId } = this.data
     try {
-      const menuRaw = await MENU.getFamilyMenu(currentFamilyId)
+      const menuRaw = await MENU.getFamilyMenu(currentFamilyId, { force })
       const menu = await MENU.formatFamilyMenuAsync(menuRaw)
       DISH_IMAGE.registerDishes(menu.dishes)
       const menuMembers = menu.menu_members || menu.cooks || []

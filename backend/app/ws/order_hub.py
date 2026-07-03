@@ -47,3 +47,17 @@ async def notify_orders_updated(family_id: int) -> None:
         family_id,
         {"type": "orders_updated", "family_id": family_id},
     )
+
+
+async def notify_menu_updated(
+    family_id: int,
+    *,
+    dish_id: int | None = None,
+    updated_at: str | None = None,
+) -> None:
+    message: dict = {"type": "menu_updated", "family_id": family_id}
+    if dish_id is not None:
+        message["dish_id"] = dish_id
+    if updated_at:
+        message["updated_at"] = updated_at
+    await order_hub.broadcast(family_id, message)

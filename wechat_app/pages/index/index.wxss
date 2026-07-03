@@ -148,18 +148,28 @@
   color: #C4A57B !important;
 }
 
-/* ── 双列网格 ── */
+/* ── 双列网格（iOS 微信对 flex+gap+calc 支持差，用 50% + padding 更稳） ── */
 .grid-outer {
   padding-bottom: calc(180rpx + env(safe-area-inset-bottom));
+  width: 100%;
+  box-sizing: border-box;
 }
 .grid {
   display: flex;
   flex-wrap: wrap;
-  gap: 16rpx;
   padding: 12rpx 24rpx 0;
+  margin: 0 -8rpx;
+  width: 100%;
+  box-sizing: border-box;
 }
 .grid-cell {
-  width: calc(50% - 8rpx);
+  width: 50%;
+  max-width: 50%;
+  flex: 0 0 50%;
+  padding: 0 8rpx 16rpx;
+  box-sizing: border-box;
+}
+.grid-cell .dish-card {
   animation: fadeUp 0.45s ease both;
 }
 @keyframes fadeUp {
@@ -473,14 +483,14 @@
 
 /* ── 加菜弹层 ── */
 .add-sheet {
-  padding: 32rpx 32rpx calc(16rpx + env(safe-area-inset-bottom));
+  padding: 28rpx 32rpx calc(12rpx + env(safe-area-inset-bottom));
 }
 
 .add-sheet-header {
   display: flex;
   align-items: center;
   gap: 24rpx;
-  margin-bottom: 40rpx;
+  margin-bottom: 28rpx;
 }
 
 .add-sheet-img {
@@ -537,7 +547,7 @@
 .add-sheet-footer {
   display: flex;
   gap: 20rpx;
-  margin-top: 40rpx;
+  margin-top: 24rpx;
 }
 
 .sheet-cancel-btn {
