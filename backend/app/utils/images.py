@@ -7,7 +7,7 @@ from app.config import BACKEND_ROOT
 from app.core.exceptions import bad_request
 
 UPLOAD_DIR = BACKEND_ROOT / "data" / "uploads"
-MAX_IMAGE_SIZE = 5 * 1024 * 1024
+MAX_IMAGE_SIZE = 10 * 1024 * 1024
 
 AVATAR_KEY = "avatar"
 DISHES_SUBDIR = "dishes"
